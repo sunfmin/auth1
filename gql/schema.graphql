@@ -1,0 +1,22 @@
+directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITION
+    | FIELD_DEFINITION
+
+type Query {
+    getUser(accessToken: String!): [User!]
+}
+
+type Mutation {
+    signUp(input: SignUpInput!): User
+}
+
+input SignUpInput {
+    password: String!
+}
+
+type User {
+    id: ID!
+}
+
+
+scalar Time
+scalar URI
