@@ -1,1 +1,1 @@
-export DB="host=localhost port=5002 user=auth1 dbname=auth1_test password=123 sslmode=disable"
+export DB="host=localhost port=5432 user=auth1 dbname=auth1_test password=123 sslmode=disable"
