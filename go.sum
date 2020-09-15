@@ -174,6 +174,8 @@ github.com/sunfmin/gogen v0.0.0-20190729023015-b62f6c8c554a h1:px4HxcGWRh7pLNy1W
 github.com/sunfmin/gogen v0.0.0-20190729023015-b62f6c8c554a/go.mod h1:j68UhnsQE0rdZ7U/KO32huo8Wa8U9PAW+w2MFdx0PQQ=
 github.com/sunfmin/gqlgen_data_gen v0.0.0-20200813035314-0fa480672d57 h1:ajRnxUwn+5cYPenEEJ9SCcvphjwK3tvQNAajGMqfDkY=
 github.com/sunfmin/gqlgen_data_gen v0.0.0-20200813035314-0fa480672d57/go.mod h1:BPnGrtjfCPiwsXnSHTDFNbxOyplvRmTVnXF/lIvfMms=
+github.com/sunfmin/gqlgen_data_gen v0.0.0-20200915053629-6d760b254e2a h1:MR1gAkbQHp5OwA3/ssziFP6OlTrzv9tq6u5qDAvm6nU=
+github.com/sunfmin/gqlgen_data_gen v0.0.0-20200915053629-6d760b254e2a/go.mod h1:vxqZBx/Z2dl/bPid1kSy4a/oia7ADGf2Vv4esFC1zls=
 github.com/sunfmin/graphql v0.2.2 h1:+/iE2cZl1uRFhlCf6uBJ4S4rCMgkethU8Z18iLNOEM4=
 github.com/sunfmin/graphql v0.2.2/go.mod h1:hPTDbRDKjb7E3P6EK2zE4Pv8YXMQjUGl22pCHtUbsuc=
 github.com/sunfmin/handlertransport v0.0.0-20190527082801-49afa811fd3b h1:5yf3YM92S/TeyYFx/kH9ZJtF/JWn/8Be6rSzYf+mhDI=
