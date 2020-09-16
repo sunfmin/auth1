@@ -19,6 +19,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (u
 	_, err = r.EntClient.User.Create().
 		SetPassword(input.Password).
 		SetID(id).
+		SetUsername(input.Username).
 		Save(ctx)
 	if err != nil {
 		return

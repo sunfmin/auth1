@@ -10,6 +10,7 @@ type Mutation {
 }
 
 input SignUpInput {
+    username: String!
     password: String!
 }
 
