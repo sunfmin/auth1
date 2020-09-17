@@ -20,6 +20,8 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.SignUpInput{
 					Username: "hd",
+					PhoneNumber:"1212121",
+					Email:"12121211",
 					Password: "hello",
 				},
 			},
