@@ -41,7 +41,7 @@ func MustGetGraphqlClient() *graphql.Client {
 		return _client
 	}
 
-	var graphqlHandler = gql.NewHandler(MustGetEntClient())
+	var graphqlHandler = gql.NewHandler(MustGetEntClient(), &gql.Args{})
 
 	_client = graphql.NewClient("",
 		UseGoLog,
