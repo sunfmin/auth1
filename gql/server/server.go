@@ -20,7 +20,14 @@ func main() {
 	}
 
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/query", handler.NewDefaultServer(gql.NewExecutableSchema(gql.Config{Resolvers: &gql.Resolver{EntClient: config.MustGetEntClient()}})))
+	http.Handle("/query", handler.NewDefaultServer(
+		gql.NewExecutableSchema(
+			gql.Config{
+				Resolvers: &gql.Resolver{
+					EntClient: config.MustGetEntClient(),
+				},
+			},
+		)))
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))

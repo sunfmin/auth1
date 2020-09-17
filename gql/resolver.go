@@ -13,6 +13,7 @@ import (
 
 type Resolver struct {
 	EntClient *ent.Client
+	Args      *Args
 }
 
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (user *api.User, err error) {
