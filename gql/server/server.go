@@ -8,7 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/sunfmin/auth1/gql"
-	"github.com/sunfmin/auth1/gql/config"
+	"github.com/sunfmin/auth1/gql/boot"
 )
 
 const defaultPort = "8080"
@@ -24,7 +24,7 @@ func main() {
 		gql.NewExecutableSchema(
 			gql.Config{
 				Resolvers: &gql.Resolver{
-					EntClient: config.MustGetEntClient(),
+					EntClient: boot.MustGetEntClient(),
 				},
 			},
 		)))
