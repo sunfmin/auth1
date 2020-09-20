@@ -5,13 +5,14 @@ import (
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/sunfmin/auth1/ent"
+	"github.com/sunfmin/auth1/gql/api"
 )
 
-func NewHandler(db *ent.Client, args *Args) (r http.Handler) {
+func NewHandler(db *ent.Client, cfg *api.BootConfig) (r http.Handler) {
 	var graphqlHandler = handler.NewDefaultServer(
 		NewExecutableSchema(Config{Resolvers: &Resolver{
 			EntClient: db,
-			Args:      args,
+			Config:    cfg,
 		}}),
 	)
 

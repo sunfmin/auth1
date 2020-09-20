@@ -6,23 +6,10 @@ import (
 
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
-	"github.com/sunfmin/auth1/gql/config"
+	"github.com/sunfmin/auth1/gql/boot"
 	"github.com/sunfmin/graphql"
 	"github.com/theplant/testingutils"
 )
-
-type TestDep struct {
-	Client    *graphql.Client
-	EntClient *ent.Client
-}
-
-func ForTest() TestDep {
-
-	return TestDep{
-		Client:    config.MustGetGraphqlClient(),
-		EntClient: config.MustGetEntClient(),
-	}
-}
 
 func defaultMatchIgnore(d *api.Data) {
 	if d.SignUp != nil {
@@ -39,6 +26,7 @@ type Var struct {
 
 type GraphqlCase struct {
 	name            string
+	bootConfig      *api.BootConfig
 	query           string
 	vars            []Var
 	expected        *api.Data
@@ -52,16 +40,17 @@ func TestLogic(t0 *testing.T) {
 	var cases []GraphqlCase
 	cases = append(cases, userMutationCases...)
 
-	td := ForTest()
-	err := td.EntClient.Schema.Create(ctx)
+	entClient := boot.MustGetEntClient()
+	err := entClient.Schema.Create(ctx)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, c := range cases {
 		t0.Run(c.name, func(t *testing.T) {
+			client := boot.MustGetGraphqlClient(c.bootConfig)
 			if c.fixture != nil {
-				c.fixture(td.EntClient)
+				c.fixture(entClient)
 			}
 
 			req := graphql.NewRequest(c.query)
@@ -70,7 +59,7 @@ func TestLogic(t0 *testing.T) {
 			}
 
 			var res = &api.Data{}
-			if err := td.Client.Run(ctx, req, res); err != nil {
+			if err := client.Run(ctx, req, res); err != nil {
 				if c.expectedError == nil {
 					panic(err)
 				} else {

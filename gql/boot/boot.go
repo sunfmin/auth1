@@ -1,4 +1,4 @@
-package config
+package boot
 
 import (
 	"log"
@@ -8,6 +8,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql"
+	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/graphql"
 	"github.com/sunfmin/handlertransport"
 )
@@ -36,12 +37,16 @@ func UseGoLog(c *graphql.Client) {
 
 var _client *graphql.Client
 
-func MustGetGraphqlClient() *graphql.Client {
+func MustGetGraphqlClient(cfg *api.BootConfig) *graphql.Client {
 	if _client != nil {
 		return _client
 	}
 
-	var graphqlHandler = gql.NewHandler(MustGetEntClient(), &gql.Args{})
+	if cfg == nil {
+		cfg = &api.BootConfig{}
+	}
+
+	var graphqlHandler = gql.NewHandler(MustGetEntClient(), cfg)
 
 	_client = graphql.NewClient("",
 		UseGoLog,
