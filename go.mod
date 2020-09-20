@@ -15,4 +15,5 @@ require (
 	github.com/sunfmin/handlertransport v0.0.0-20190527082801-49afa811fd3b
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
 	github.com/vektah/gqlparser/v2 v2.0.1
+	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 )

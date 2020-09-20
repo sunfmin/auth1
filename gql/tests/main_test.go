@@ -13,7 +13,7 @@ import (
 
 func defaultMatchIgnore(d *api.Data) {
 	if d.SignUp != nil {
-		d.SignUp.ID = ""
+		d.SignUp.UserSub = ""
 	}
 }
 

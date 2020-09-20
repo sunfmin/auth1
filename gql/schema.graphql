@@ -3,8 +3,6 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
 
 type Query {
     getUser(accessToken: String!): [User!]
-    phoneLogin(phone_number: String!): User
-    emailLogin(email: String!): User
 }
 
 type Mutation {
@@ -12,20 +10,19 @@ type Mutation {
 }
 
 input SignUpInput {
-    username: String!
-    phone_number:String!
-    email:String!
-    password: String!
+    UserAttributes:AttributeType
+    Password: String!
 }
 
 type User {
-    id: ID!
-    username: String!
-    password: String!
-    phone_number:String!
-    email:String!
-}
+    UserConfirmed:Boolean!
+    UserSub: ID!
 
+}
+input AttributeType{
+    Name:String
+    Value:String
+}
 
 scalar Time
 scalar URI

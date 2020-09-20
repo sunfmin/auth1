@@ -4,11 +4,12 @@ package gql
 
 import (
 	"context"
-
+    "fmt"
 	"github.com/google/uuid"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
-	"github.com/sunfmin/auth1/ent/user"
+	"golang.org/x/crypto/bcrypt"
+
 )
 
 type Resolver struct {
@@ -17,42 +18,43 @@ type Resolver struct {
 }
 
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (user *api.User, err error) {
+   hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+   if err != nil {
+	return
+   }
+
+   if *input.UserAttributes.Name=="email"{
 	id := uuid.New()
-	_, err = r.EntClient.User.Create().
-		SetPassword(input.Password).
+	_, err = r.EntClient.User.
+	    Create().
+		SetEmail(*input.UserAttributes.Value).
+		SetPassword( string(hash)).
 		SetID(id).
-		SetUsername(input.Username).
-		SetPhoneNumber(input.PhoneNumber).
-		SetEmail(input.Email).
-		Save(ctx)
+		Save(ctx)	
 	if err != nil {
 		return
 	}
-	user = &api.User{ID: id.String()}
+	user = &api.User{UserConfirmed:true,UserSub: id.String()}
 	return
+	}else if *input.UserAttributes.Name=="phone_number"{
+		id := uuid.New()
+		_, err = r.EntClient.User.
+		    Create().
+		    SetPhoneNumber(*input.UserAttributes.Value).
+			SetPassword(string(hash)).
+			SetID(id).
+			Save(ctx)
+		if err != nil {
+			return
+		}
+		user = &api.User{UserConfirmed:true,UserSub: id.String()}
+		return
+	 }else{
+		    err:=fmt.Errorf("Unknown:Name")
+            return nil,err
+	 }
 }
 
-func (r *queryResolver) PhoneLogin(ctx context.Context, phone string) ( pwd*api.User, err error) {
-	u, err :=  r.EntClient.User.Query().
-	   Where(user.PhoneNumber(phone)).
-	   	Only(ctx)
-	if err != nil {
-		return nil,err
-	}
-	pwd=&api.User{Password: u.Password}
-	return pwd,err
-}
-
-func (r *queryResolver) EmailLogin(ctx context.Context, email string) (pwd*api.User, err error) {
-	u, err :=  r.EntClient.User.Query().
-	   Where(user.Email(email)).
-	   	Only(ctx)
-	if err != nil {
-		return nil,err
-	}
-	pwd=&api.User{Password:u.Password}
-	return pwd,err
-}
 
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
 	panic("not implemented")
