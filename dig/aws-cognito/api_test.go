@@ -76,7 +76,7 @@ func TestConfirmUser(t *testing.T) {
 
 	output, err := p1.ConfirmSignUp(&cip.ConfirmSignUpInput{
 		ClientId:         clientId,
-		Username:         aws.String("felix"),
+		Username:         username,
 		ConfirmationCode: aws.String("702420"),
 	})
 
@@ -87,6 +87,108 @@ func TestConfirmUser(t *testing.T) {
 	/*
 		{
 
+		}
+	*/
+}
+
+func TestChangePassword(t *testing.T) {
+	accessToken := "eyJraWQiOiJOWXplZkRjZWhKSzRzRjhMeGlGWnlSZnd3MzJ2akgxM2t1YllnVUVQcWZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJiZDJhMDcwYi1iOGRiLTRhNmEtOTVhMi0yOWIyOTBmMDcwOWUiLCJldmVudF9pZCI6Ijg1ZGMzMjE3LTM5NDMtNDZkZS05NDE4LTUyYWZkNWZkZjY4NyIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoiYXdzLmNvZ25pdG8uc2lnbmluLnVzZXIuYWRtaW4iLCJhdXRoX3RpbWUiOjE2MDA2NzMyMjYsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX0Ixc0Z2YzRqSSIsImV4cCI6MTYwMDY3NjgyNiwiaWF0IjoxNjAwNjczMjI2LCJqdGkiOiI2NGMxMDYwMi05MDQ2LTRkZjAtYTYwNy0xYmM2ZWZkMzQxOTQiLCJjbGllbnRfaWQiOiIya252cnRsZDhqNmNvc3E3ZTQ3N3JoZHU1aiIsInVzZXJuYW1lIjoiZmVsaXgifQ.H-B-0hTQUXBNofyVgViRQnQ4pB86XrRsaEDUHkfun6E-ATc967QQX3XlqfgR12jPupQ9-AIogn8XlAkguqvFR6SvDY5cnJ_X5L1cGjvYT7ABk6OO7flQyLrBZpk4P5HgsbHyKquA6Zv1yI4hGu4asqdZMvksVaB9woLQ_dW1nizau4zIhEamqlv1TpvRaikeueiMJq_jWRoMZcYipq9w88lnWtyQDDIh--0foR4MveFGSrrpfhEDTiz3OPJMZtRLJXrZrB5JYOjnePz-o1-zCDlwEUvpntRQ4qVUl5tFKlUP5UmMsuRXJctEinMC8G5Nw86BMJCEcO4Jjlfcbq6Y1A"
+	output, err := p1.ChangePassword(&cip.ChangePasswordInput{
+		AccessToken:      aws.String(accessToken),
+		PreviousPassword: password,
+		ProposedPassword: password,
+	})
+
+	fmt.Println(output, err)
+	if err != nil {
+		t.Error(err)
+	}
+
+	/*
+	   {
+
+	   }
+	*/
+}
+
+func TestForgotPassword(t *testing.T) {
+	output, err := p1.ForgotPassword(&cip.ForgotPasswordInput{
+		ClientId: clientId,
+		Username: username,
+	})
+
+	fmt.Println(output, err)
+	if err != nil {
+		t.Error(err)
+	}
+
+	/*
+	   {
+	     CodeDeliveryDetails: {
+	       AttributeName: "email",
+	       DeliveryMedium: "EMAIL",
+	       Destination: "s***@g***.com"
+	     }
+	   }
+	*/
+}
+
+func TestConfirmForgotPassword(t *testing.T) {
+	output, err := p1.ConfirmForgotPassword(&cip.ConfirmForgotPasswordInput{
+		ClientId:         clientId,
+		Username:         username,
+		ConfirmationCode: aws.String("921335"),
+		Password:         password,
+	})
+
+	fmt.Println(output, err)
+	if err != nil {
+		t.Error(err)
+	}
+
+	/*
+		{
+
+		}
+	*/
+}
+
+func TestGlobalSignOut(t *testing.T) {
+	accessToken := "eyJraWQiOiJOWXplZkRjZWhKSzRzRjhMeGlGWnlSZnd3MzJ2akgxM2t1YllnVUVQcWZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJiZDJhMDcwYi1iOGRiLTRhNmEtOTVhMi0yOWIyOTBmMDcwOWUiLCJldmVudF9pZCI6ImI5ODIwYzY1LTk4N2YtNDBjMS1hNGM2LTgxNjE3NzNiOGFjYyIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoiYXdzLmNvZ25pdG8uc2lnbmluLnVzZXIuYWRtaW4iLCJhdXRoX3RpbWUiOjE2MDA2NzMwNTAsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX0Ixc0Z2YzRqSSIsImV4cCI6MTYwMDY3NjY1MCwiaWF0IjoxNjAwNjczMDUwLCJqdGkiOiI0NThlYWI2Yy04MzYzLTQ0OTYtYWUwOS0yMmQ1OTc5ZTQwMTEiLCJjbGllbnRfaWQiOiIya252cnRsZDhqNmNvc3E3ZTQ3N3JoZHU1aiIsInVzZXJuYW1lIjoiZmVsaXgifQ.UOpdScT_WpknQg9iZpPe-MAw4DEAhhwdO9IAyydwLxeC3nGbKO954DSjRVZI19ZkO4oeU3tF8e9R4Iqvork-7G2F4jQPr8rCXd5fvGdNVWhvRnthdF4yUscB8O593a9cb6LaS3Dx_E3SSlJsxn3CLUS9sLMcVYx6rt_u_bKymJ9XOOP3ZptmTHj32mTtO-yAGO_SUzw71smoN_QiAkYk3EGwT4fRStoy-xcopdcpdjr_kXn-kZtB9kqpcMBDJYFQNvXQMdMHMJuKfkN3BD5kJH3-4IvfW_bHnLug4J1ZzQgIsJqrUQs-qLedD-MADUJt3FE69RGW8TjVNwugWCt3hA"
+	output, err := p1.GlobalSignOut(&cip.GlobalSignOutInput{
+		AccessToken: aws.String(accessToken),
+	})
+
+	fmt.Println(output, err)
+	if err != nil {
+		t.Error(err)
+	}
+
+	/*
+		{
+
+		}
+	*/
+}
+
+func TestResendConfirmationCode(t *testing.T) {
+	output, err := p1.ResendConfirmationCode(&cip.ResendConfirmationCodeInput{
+		ClientId: clientId,
+		Username: aws.String("felix"),
+	})
+
+	fmt.Println(output, err)
+	if err != nil {
+		t.Error(err)
+	}
+
+	/*
+		{
+		  CodeDeliveryDetails: {
+		    AttributeName: "email",
+		    DeliveryMedium: "EMAIL",
+		    Destination: "s***@g***.com"
+		  }
 		}
 	*/
 }
@@ -122,7 +224,7 @@ func TestInitAuth(t *testing.T) {
 	*/
 }
 
-func TestDecodeAccessToken(t *testing.T) {
+func TestCheckTokens(t *testing.T) {
 	accessToken := "eyJraWQiOiJOWXplZkRjZWhKSzRzRjhMeGlGWnlSZnd3MzJ2akgxM2t1YllnVUVQcWZjPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJiZDJhMDcwYi1iOGRiLTRhNmEtOTVhMi0yOWIyOTBmMDcwOWUiLCJldmVudF9pZCI6IjAzYTMwZmJhLTY0OGYtNGJmZS04MmNhLTBjOTk2OTFhMWM0YiIsInRva2VuX3VzZSI6ImFjY2VzcyIsInNjb3BlIjoiYXdzLmNvZ25pdG8uc2lnbmluLnVzZXIuYWRtaW4iLCJhdXRoX3RpbWUiOjE2MDA2NjAzNzYsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC51cy1lYXN0LTEuYW1hem9uYXdzLmNvbVwvdXMtZWFzdC0xX0Ixc0Z2YzRqSSIsImV4cCI6MTYwMDY2Mzk3NiwiaWF0IjoxNjAwNjYwMzc2LCJqdGkiOiJkMmViYzYzYi00MmI4LTRkMTgtOTE1ZC1mMDkwNzM1M2UyZTkiLCJjbGllbnRfaWQiOiIya252cnRsZDhqNmNvc3E3ZTQ3N3JoZHU1aiIsInVzZXJuYW1lIjoiZmVsaXgifQ.eRkR-k3rj8qwm3NRsDDCxJObY7tvWCnnMdnvCeHyQQP_fSE1oNlCQZV1cxwEQOsmX6oI9DZ-xy2XJiZyisaq2LzMwQk3_IJ30pvK6BnEt5m-ynWpWBHgIyXVw7sMa578NRrWen1lYGmR0s7nxRl1R0dLkxpDVMprNKFvk7L_hOYWKA7B3XH1id_oB5mwlAZk3D6vDXmUFCoeywowPdgyGMx1R3uvTt2maPodbHUbTItbsQ86YMDAhv6kBVeZChlwhio9Pb4IpPjxltPVpsyEAAwIb2R8vkb4VDWTPCfQVMrXwvMrYDDT5YNLWZScVaEhBAxwUB03JBG0virQRFp17w"
 	idToken := "eyJraWQiOiJod3c2WjNmNmxLeEZHMjU5YVRlZXFCTXlPRzVTeHM2Q1wvM2pxRVV3Z2NvUT0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiZDJhMDcwYi1iOGRiLTRhNmEtOTVhMi0yOWIyOTBmMDcwOWUiLCJhdWQiOiIya252cnRsZDhqNmNvc3E3ZTQ3N3JoZHU1aiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJldmVudF9pZCI6IjAzYTMwZmJhLTY0OGYtNGJmZS04MmNhLTBjOTk2OTFhMWM0YiIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNjAwNjYwMzc2LCJpc3MiOiJodHRwczpcL1wvY29nbml0by1pZHAudXMtZWFzdC0xLmFtYXpvbmF3cy5jb21cL3VzLWVhc3QtMV9CMXNGdmM0akkiLCJjb2duaXRvOnVzZXJuYW1lIjoiZmVsaXgiLCJleHAiOjE2MDA2NjM5NzYsImlhdCI6MTYwMDY2MDM3NiwiZW1haWwiOiJzdW5mbWluQGdtYWlsLmNvbSJ9.XgLtVWr1vnCQ2jgQOOKRSCrzTyCnevh0MmmgMvnHB_uq1rJgFzr6Hx--xDqwQx2mYI98w4h0YDnHPmRGxGU2v9mAxfojX5ihgA836KvpMkCs4nwcztYEPKmiyOWpQYBugsZaDtnROlS1nm6vvZs5E4EMNpwVeyNLRbZs22wpieIZcNygcoaq9EcbzHPLkQYaqCxfzrQeC1zZbKKd-bbUuuPlWGzasLd-Yy07i2YoYBL8egHJHyqMU_CUvKmc6qcYP6saHlYsMbC8_Reoho0A1aviY0g2LFdKaPjZ_IFP94SeCYbWhtDGJNhzan_vlIwfVpBVEHCSdunSW-X9u9WGlA"
 
