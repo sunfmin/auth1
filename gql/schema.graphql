@@ -10,18 +10,26 @@ type Mutation {
 }
 
 input SignUpInput {
-    UserAttributes:AttributeType
+    Username: String!
+    UserAttributes: AttributeType
     Password: String!
+    
 }
 
 type User {
-    UserConfirmed:Boolean!
+    CodeDeliveryDetails: Details
+    UserConfirmed: Boolean!
     UserSub: ID!
 
 }
 input AttributeType{
     Name:String
     Value:String
+}
+type Details{
+    AttributeName: String!
+    DeliveryMedium: String!
+    Destination: String!
 }
 
 scalar Time

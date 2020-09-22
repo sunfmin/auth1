@@ -11,7 +11,13 @@ var userMutationCases = []GraphqlCase{
 		query: `
 		mutation ($input: SignUpInput!) {
 			signUp(input: $input) {
-				id
+				CodeDeliveryDetails{
+					AttributeName,
+					DeliveryMedium,
+					Destination
+				  },
+						  UserConfirmed, 
+				  UserSub
 			}
 		}
 		`,
@@ -19,6 +25,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.SignUpInput{
+					Username:"qwqwq",
 					UserAttributes :{
 						AttributeType.Name:"email",
 						AttributeType.Value:"eqwewqeqw",
