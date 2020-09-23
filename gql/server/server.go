@@ -8,6 +8,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/sunfmin/auth1/gql"
+	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/auth1/gql/boot"
 )
 
@@ -25,6 +26,11 @@ func main() {
 			gql.Config{
 				Resolvers: &gql.Resolver{
 					EntClient: boot.MustGetEntClient(),
+					Config: &api.BootConfig{
+						AllowSignInWithVerifiedEmailAddress: true,
+						AllowSignInWithVerifiedPhoneNumber:  false,
+						AllowSignInWithPreferredUsername:    false,
+					},
 				},
 			},
 		)))

@@ -18,10 +18,12 @@ func (User) Fields() []ent.Field {
 		field.String("username").Optional(),
 		field.String("phone_number").Optional(),
 		field.String("email").Optional(),
-		field.String("password").Optional(),
+		field.String("password_hash").Optional(),
+		field.String("confirmation_code_hash").Optional(),
+		
 	}
+	
 }
-
 // Edges of the User.
 func (User) Edges() []ent.Edge {
 	return nil

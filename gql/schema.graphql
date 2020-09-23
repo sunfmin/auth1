@@ -11,13 +11,13 @@ type Mutation {
 
 input SignUpInput {
     Username: String!
-    UserAttributes: AttributeType
+    UserAttributes:[AttributeType]
     Password: String!
     
 }
 
 type User {
-    CodeDeliveryDetails: Details
+    CodeDeliveryDetails: CodeDeliveryDetails
     UserConfirmed: Boolean!
     UserSub: ID!
 
@@ -26,7 +26,7 @@ input AttributeType{
     Name:String
     Value:String
 }
-type Details{
+type CodeDeliveryDetails{
     AttributeName: String!
     DeliveryMedium: String!
     Destination: String!

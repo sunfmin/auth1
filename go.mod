@@ -6,6 +6,7 @@ require (
 	github.com/99designs/gqlgen v0.12.2
 	github.com/aws/aws-sdk-go v1.34.23
 	github.com/facebook/ent v0.4.2
+	github.com/ggwhite/go-masker v1.0.4
 	github.com/google/uuid v1.1.2
 	github.com/lib/pq v1.8.0
 	github.com/matryer/is v1.4.0 // indirect

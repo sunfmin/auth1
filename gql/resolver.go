@@ -5,10 +5,10 @@ package gql
 import (
 	"context"
 	"fmt"
-	"log"
-	"regexp"
-	"strings"
+	"math/rand"
+	"time"
 
+	 masker "github.com/ggwhite/go-masker"
 	"github.com/google/uuid"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/ent/user"
@@ -17,115 +17,88 @@ import (
 )
 
 type Resolver struct {
-	EntClient *ent.Client
-	Config    *api.BootConfig
+	EntClient       *ent.Client
+	Config          *api.BootConfig
 }
-
-func HideStar(str string) (result string) {
-	if str == "" {
-		return "***"
-	}
-	if strings.Contains(str, "@") {
-		res := strings.Split(str, "@")
-		if len(res[0]) < 3 {
-			resString := "***"
-			result = resString + "@" + res[1]
-		} else {
-			res2 := Substr2(str, 0, 3)
-			resString := res2 + "***"
-			result = resString + "@" + res[1]
-		}
-		return result
-	} else {
-		reg := `^1[0-9]\d{9}$`
-		rgx := regexp.MustCompile(reg)
-		mobileMatch := rgx.MatchString(str)
-		if mobileMatch {
-			result = Substr2(str, 0, 3) + "****" + Substr2(str, 7, 11)
-		} else {
-			nameRune := []rune(str)
-			lens := len(nameRune)
-
-			if lens <= 1 {
-				result = "***"
-			} else if lens == 2 {
-				result = string(nameRune[:1]) + "*"
-			} else if lens == 3 {
-				result = string(nameRune[:1]) + "*" + string(nameRune[2:3])
-			} else if lens == 4 {
-				result = string(nameRune[:1]) + "**" + string(nameRune[lens-1:lens])
-			} else if lens > 4 {
-				result = string(nameRune[:2]) + "***" + string(nameRune[lens-2:lens])
-			}
-		}
-		return
-	}
-}
-
-func Substr2(str string, start int, end int) string {
-	rs := []rune(str)
-	return string(rs[start:end])
-}
-
-func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+func VerificationCode()(output string){
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	vcode := fmt.Sprintf("%06v", rnd.Int31n(1000000))
+	vcode_hash, err := bcrypt.GenerateFromPassword([]byte(vcode), bcrypt.DefaultCost)
 	if err != nil {
 		return
 	}
-	if *input.UserAttributes.Name == "email" {
-		id := uuid.New()
-		_, err = r.EntClient.User.
-			Query().
-			Where(user.Email(*input.UserAttributes.Value)).
-			Only(ctx)
-		if err != nil && err.Error() == "ent: user not found" {
-			_, err = r.EntClient.User.
-				Create().
-				SetUsername(input.Username).
-				SetEmail(*input.UserAttributes.Value).
-				SetPassword(string(hash)).
-				SetID(id).
-				Save(ctx)
-			if err != nil {
-				return
-			}
-			log.Println("发送验证码")
-			result := HideStar(*input.UserAttributes.Value)
-			output = &api.User{CodeDeliveryDetails: &api.Details{AttributeName: "email", DeliveryMedium: "EMAIL", Destination: result}, UserConfirmed: false, UserSub: id.String()}
-			return
-		} else {
-			errs := fmt.Errorf("Email already exists")
-			return nil, errs
-		}
-	} else if *input.UserAttributes.Name == "phone_number" {
-		id := uuid.New()
-		_, err = r.EntClient.User.
-			Query().
-			Where(user.PhoneNumber(*input.UserAttributes.Value)).
-			Only(ctx)
-		if err != nil && err.Error() == "ent: user not found" {
-			_, err = r.EntClient.User.
-				Create().
-				SetUsername(input.Username).
-				SetPhoneNumber(*input.UserAttributes.Value).
-				SetPassword(string(hash)).
-				SetID(id).
-				Save(ctx)
-			if err != nil {
-				return
-			}
-			log.Println("发送验证码")
-			result := HideStar(*input.UserAttributes.Value)
-			output = &api.User{CodeDeliveryDetails: &api.Details{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: result}, UserConfirmed: false, UserSub: id.String()}
-			return
-		} else {
-			errs := fmt.Errorf("Mobile number already exists")
-			return nil, errs
-		}
-	} else {
-		errs := fmt.Errorf("Unknown:Name")
-		return nil, errs
+	return string(vcode_hash)
+}
+func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
+	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return
 	}
+	id := uuid.New()
+	if r.Config.AllowSignInWithVerifiedEmailAddress==true {
+		_, err = r.EntClient.User.Query().Where(user.Email(*input.UserAttributes[0].Value)).Only(ctx)
+		if err !=nil &&ent.IsNotFound(err)==false{
+            return 
+		}
+		if  err==nil {
+			errs := fmt.Errorf("Email already exists")
+		    return nil, errs
+
+		}
+	
+		_, err = r.EntClient.User.Create().
+		    SetID(id).
+		    SetUsername(input.Username).
+		    SetPasswordHash(string(password_hash)).
+		    SetEmail(*input.UserAttributes[0].Value).
+			SetConfirmationCodeHash(VerificationCode()).
+			Save(ctx)
+			if err != nil {
+				return
+		    }	
+			for i:=1;i<len(input.UserAttributes);i++{
+				 _, err = r.EntClient.User.Update(). Where(user.ID(id)).SetPhoneNumber(*input.UserAttributes[i].Value).Save(ctx)
+				 if err != nil {
+					return
+				}	
+			}	
+			
+	        output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: "email", DeliveryMedium: "EMAIL", Destination: masker.Mobile(*input.UserAttributes[0].Value)}, UserConfirmed: false, UserSub: id.String()}
+	        return
+	}
+	if r.Config.AllowSignInWithVerifiedPhoneNumber==true {
+		_, err = r.EntClient.User.Query().Where(user.PhoneNumber(*input.UserAttributes[0].Value)).Only(ctx)
+		if err !=nil &&ent.IsNotFound(err)==false{
+            return 
+		}
+		if  err==nil {
+			errs := fmt.Errorf("Email already exists")
+		    return nil, errs
+
+		}
+		_, err = r.EntClient.User.Create().
+		    SetID(id).
+		    SetUsername(input.Username).
+			SetPasswordHash(string(password_hash)).
+			SetPhoneNumber(*input.UserAttributes[0].Value).
+			SetConfirmationCodeHash(VerificationCode()).
+			Save(ctx)
+			if err != nil {
+				return
+		    }	
+			for i:=1;i<len(input.UserAttributes);i++{
+				_, err = r.EntClient.User.Update(). Where(user.ID(id)).SetEmail(*input.UserAttributes[i].Value).Save(ctx)
+				if err != nil {
+					return
+				}	
+			}	
+			output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(*input.UserAttributes[0].Value)}, UserConfirmed: false, UserSub: id.String()}
+			return
+		
+	}
+	errs := fmt.Errorf("Config is nil")
+	return nil, errs
+
 }
 
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {

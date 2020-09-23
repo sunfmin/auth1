@@ -8,6 +8,11 @@ var userMutationCases = []GraphqlCase{
 	{
 		name:    "SignUp normal",
 		fixture: nil,
+		Config: &api.BootConfig{
+			AllowSignInWithVerifiedEmailAddress: true,
+			AllowSignInWithVerifiedPhoneNumber:  false,
+			AllowSignInWithPreferredUsername:    false,
+		},
 		query: `
 		mutation ($input: SignUpInput!) {
 			signUp(input: $input) {
@@ -26,10 +31,13 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.SignUpInput{
 					Username:"qwqwq",
-					UserAttributes :{
+					UserAttributes:[{
 						AttributeType.Name:"email",
 						AttributeType.Value:"eqwewqeqw",
-					},
+					},{
+						AttributeType.Name:"email",
+						AttributeType.Value:"eqwewqeqw",
+					},]
 					Password: "hello",
 				},
 			},
