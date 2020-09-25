@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/99designs/gqlgen v0.12.2
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.530
 	github.com/aws/aws-sdk-go v1.34.23
 	github.com/facebook/ent v0.4.2
 	github.com/ggwhite/go-masker v1.0.4
@@ -17,4 +18,6 @@ require (
 	github.com/theplant/testingutils v0.0.0-20190603093022-26d8b4d95c61
 	github.com/vektah/gqlparser/v2 v2.0.1
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )

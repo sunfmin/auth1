@@ -7,6 +7,7 @@ type Query {
 
 type Mutation {
     signUp(input: SignUpInput!): User
+    ConfirmSignUp(input: ConfirmSignUpInput!):ConfirmUser
 }
 
 input SignUpInput {
@@ -15,16 +16,22 @@ input SignUpInput {
     Password: String!
     
 }
-
+input ConfirmSignUpInput{
+    Username: String!
+    ConfirmationCode: String!
+}
 type User {
     CodeDeliveryDetails: CodeDeliveryDetails
     UserConfirmed: Boolean!
     UserSub: ID!
 
 }
+type ConfirmUser {
+   ConfirmUser:Boolean!
+}
 input AttributeType{
-    Name:String
-    Value:String
+    Name:String!
+    Value:String!
 }
 type CodeDeliveryDetails{
     AttributeName: String!

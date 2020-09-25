@@ -8,7 +8,7 @@ var userMutationCases = []GraphqlCase{
 	{
 		name:    "SignUp normal",
 		fixture: nil,
-		Config: &api.BootConfig{
+		bootConfig: &api.BootConfig{
 			AllowSignInWithVerifiedEmailAddress: true,
 			AllowSignInWithVerifiedPhoneNumber:  false,
 			AllowSignInWithPreferredUsername:    false,
@@ -21,8 +21,9 @@ var userMutationCases = []GraphqlCase{
 					DeliveryMedium,
 					Destination
 				  },
-						  UserConfirmed, 
-				  UserSub
+			   UserConfirmed, 
+                  UserSub
+    
 			}
 		}
 		`,
@@ -30,14 +31,17 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.SignUpInput{
-					Username:"qwqwq",
-					UserAttributes:[{
-						AttributeType.Name:"email",
-						AttributeType.Value:"eqwewqeqw",
-					},{
-						AttributeType.Name:"email",
-						AttributeType.Value:"eqwewqeqw",
-					},]
+					Username: "qwqwq",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "eqwewqeqw",
+						},
+						{
+							Name:  "phone_number",
+							Value: "eqwewqeqw",
+						},
+					},
 					Password: "hello",
 				},
 			},
