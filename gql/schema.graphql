@@ -3,11 +3,13 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
 
 type Query {
     getUser(accessToken: String!): [User!]
+    ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
+    InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
 }
 
 type Mutation {
     signUp(input: SignUpInput!): User
-    ConfirmSignUp(input: ConfirmSignUpInput!):ConfirmUser
+    ChangePassword(input: ChangePasswordInput!):Boolean!
 }
 
 input SignUpInput {
@@ -19,6 +21,27 @@ input SignUpInput {
 input ConfirmSignUpInput{
     Username: String!
     ConfirmationCode: String!
+}
+input InitiateAuthInput{
+    AuthFlow: String!
+    AuthParameters: AuthParameters
+    
+}
+input ChangePasswordInput{
+    AccessToken:String!
+    PreviousPassword:String!
+    ProposedPassword:String!
+}
+type AuthenticationResult {
+    AccessToken: String!
+    ExpiresIn: Int!
+    IdToken: String!
+    RefreshToken: String!    
+    TokenType: String! 
+}
+input AuthParameters{
+    Username: String!
+    Password: String!
 }
 type User {
     CodeDeliveryDetails: CodeDeliveryDetails
