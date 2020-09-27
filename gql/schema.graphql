@@ -10,6 +10,7 @@ type Query {
 type Mutation {
     signUp(input: SignUpInput!): User
     ChangePassword(input: ChangePasswordInput!):Boolean!
+    ForgotPassword(input: ForgotPasswordInput!): CodeDeliveryDetails
 }
 
 input SignUpInput {
@@ -31,6 +32,9 @@ input ChangePasswordInput{
     AccessToken:String!
     PreviousPassword:String!
     ProposedPassword:String!
+}
+input ForgotPasswordInput{
+    Username:String!
 }
 type AuthenticationResult {
     AccessToken: String!

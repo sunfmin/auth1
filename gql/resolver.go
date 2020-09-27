@@ -30,6 +30,11 @@ const (
 	JwtExpireSecond = 3600
 )
 
+func VerificationCode() string {
+	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
+	code := fmt.Sprintf("%06v", rnd.Int31n(1000000))
+	return code
+}
 func CreateAccessToken(name string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -88,7 +93,7 @@ func DoSendMail(stuEmail, subject, body string) (e error) {
 	}
 	return nil
 }
-func SendMsg(tel string, code string) string {
+func SendMsg(tel string, code string) (e error) {
 	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", "<accesskeyId>", "<accessSecret>")
 	request := dysmsapi.CreateSendSmsRequest()
 	request.Scheme = "https"
@@ -99,13 +104,14 @@ func SendMsg(tel string, code string) string {
 	response, err := client.SendSms(request)
 	fmt.Println(response.Code)
 	if response.Code == "isv.BUSINESS_LIMIT_CONTROL" {
-		return "frequency_limit"
+		errs := fmt.Errorf("frequency_limit")
+		return errs
 	}
 	if err != nil {
-		fmt.Print(err.Error())
-		return "failed"
+		errs := fmt.Errorf("failed")
+		return errs
 	}
-	return "success"
+	return nil
 }
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
 	if r.Config.AllowSignInWithVerifiedEmailAddress && r.Config.AllowSignInWithVerifiedPhoneNumber {
@@ -121,8 +127,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		phonenumber string
 	)
 	id := uuid.New()
-	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
-	code := fmt.Sprintf("%06v", rnd.Int31n(1000000))
+	code := VerificationCode()
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -170,7 +175,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		if err != nil {
 			return
 		}
-		SendMsg(phonenumber, code)
+		if SendMsg(phonenumber, code) != nil {
+			errs := fmt.Errorf("Verification code sending failed")
+			return nil, errs
+		}
 		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
 		return
 
@@ -269,6 +277,53 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		return
 	}
 	return true, nil
+}
+func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
+	if r.Config.AllowSignInWithVerifiedEmailAddress && r.Config.AllowSignInWithVerifiedPhoneNumber {
+		errs := fmt.Errorf("Config is all true")
+		return nil, errs
+	}
+	if r.Config.AllowSignInWithVerifiedEmailAddress == false && r.Config.AllowSignInWithVerifiedPhoneNumber == false {
+		errs := fmt.Errorf("Config is all false")
+		return nil, errs
+	}
+	code := VerificationCode()
+	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	if r.Config.AllowSignInWithVerifiedEmailAddress {
+		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if DoSendMail(u.Email, "邮箱验证码", code) != nil {
+			errs := fmt.Errorf("Verification code sending failed")
+			return nil, errs
+		}
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &api.CodeDeliveryDetails{AttributeName: "email", DeliveryMedium: "EMAIL", Destination: masker.Mobile(u.Email)}, nil
+	}
+	if r.Config.AllowSignInWithVerifiedPhoneNumber {
+		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if SendMsg(u.PhoneNumber, code) != nil {
+			errs := fmt.Errorf("Verification code sending failed")
+			return nil, errs
+		}
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(u.PhoneNumber)}, nil
+	}
+	errs := fmt.Errorf("Config is nil")
+	return nil, errs
 }
 
 // Mutation returns MutationResolver implementation.

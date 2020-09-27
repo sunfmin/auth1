@@ -27,8 +27,8 @@ func main() {
 				Resolvers: &gql.Resolver{
 					EntClient: boot.MustGetEntClient(),
 					Config: &api.BootConfig{
-						AllowSignInWithVerifiedEmailAddress: true,
-						AllowSignInWithVerifiedPhoneNumber:  false,
+						AllowSignInWithVerifiedEmailAddress: false,
+						AllowSignInWithVerifiedPhoneNumber:  true,
 						AllowSignInWithPreferredUsername:    false,
 					},
 				},
