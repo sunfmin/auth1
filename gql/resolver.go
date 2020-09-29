@@ -6,10 +6,8 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
 	"github.com/dgrijalva/jwt-go"
 	masker "github.com/ggwhite/go-masker"
 	"github.com/google/uuid"
@@ -17,7 +15,6 @@ import (
 	"github.com/sunfmin/auth1/ent/user"
 	"github.com/sunfmin/auth1/gql/api"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/gomail.v2"
 )
 
 type Resolver struct {
@@ -26,8 +23,12 @@ type Resolver struct {
 }
 
 const (
-	JwtSecretKey    = "welcomelogin"
-	JwtExpireSecond = 3600
+	JwtSecretKey                = "welcomelogin"
+	JwtExpireSecond             = 3600
+	EmailAttributeName          = "email"
+	PhoneNumberAttributeName    = "phone_number"
+	refreshtokenJwtSecretKey    = "refreshtoken"
+	refreshtokenJwtExpireSecond = 2592000
 )
 
 func VerificationCode() string {
@@ -53,6 +54,15 @@ func CreateIdToken(id string) (string, error) {
 
 	return token.SignedString([]byte(JwtSecretKey))
 }
+func CreateRefreshToken(id string) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"Username": id,
+		"exp":      time.Now().Add(time.Second * refreshtokenJwtExpireSecond).Unix(),
+	})
+
+	return token.SignedString([]byte(refreshtokenJwtSecretKey))
+}
 func ParseJwtToken(s string) (jwt.MapClaims, error) {
 	fn := func(token *jwt.Token) (interface{}, error) {
 		return []byte(JwtSecretKey), nil
@@ -64,63 +74,14 @@ func ParseJwtToken(s string) (jwt.MapClaims, error) {
 	finToken := result.Claims.(jwt.MapClaims)
 	return finToken, nil
 }
-func SendMail(mailTo []string, subject string, body string) error {
-
-	mailConn := map[string]string{
-		"user": "hd07**@qq.com",
-		"pass": "填授权码",
-		"host": "smtp.qq.com",
-		"port": "465",
-	}
-	port, _ := strconv.Atoi(mailConn["port"])
-
-	m := gomail.NewMessage()
-	m.SetHeader("From", m.FormatAddress(mailConn["user"], "验证码"))
-	m.SetHeader("To", mailTo...)
-	m.SetHeader("Subject", subject)
-	m.SetBody("text/html", body)
-
-	d := gomail.NewDialer(mailConn["host"], port, mailConn["user"], mailConn["pass"])
-	err := d.DialAndSend(m)
-	return err
-}
-func DoSendMail(stuEmail, subject, body string) (e error) {
-	mailTo := []string{stuEmail}
-	err := SendMail(mailTo, subject, body)
-	if err != nil {
-		e = err
-		return e
-	}
-	return nil
-}
-func SendMsg(tel string, code string) (e error) {
-	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", "<accesskeyId>", "<accessSecret>")
-	request := dysmsapi.CreateSendSmsRequest()
-	request.Scheme = "https"
-	request.PhoneNumbers = tel //手机号变量值
-	request.SignName = ""      //签名
-	request.TemplateCode = ""  //模板编码
-	request.TemplateParam = "{\"code\":\"" + code + "\"}"
-	response, err := client.SendSms(request)
-	fmt.Println(response.Code)
-	if response.Code == "isv.BUSINESS_LIMIT_CONTROL" {
-		errs := fmt.Errorf("frequency_limit")
-		return errs
-	}
-	if err != nil {
-		errs := fmt.Errorf("failed")
-		return errs
-	}
-	return nil
-}
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
 	if r.Config.AllowSignInWithVerifiedEmailAddress && r.Config.AllowSignInWithVerifiedPhoneNumber {
-		errs := fmt.Errorf("Config is all true")
-		return nil, errs
+		err = fmt.Errorf("verify email address and verify phone number can not be true the same time")
+		return
 	}
 	if r.Config.AllowSignInWithVerifiedEmailAddress == false && r.Config.AllowSignInWithVerifiedPhoneNumber == false {
-		errs := fmt.Errorf("Config is all false")
-		return nil, errs
+		err = fmt.Errorf("verify email address and verify phone number can not be false the same time")
+		return
 	}
 	var (
 		email       string
@@ -135,9 +96,9 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	}
 	for i := 0; i < len(input.UserAttributes); i++ {
 		switch {
-		case input.UserAttributes[i].Name == "email":
+		case input.UserAttributes[i].Name == EmailAttributeName:
 			email = input.UserAttributes[i].Value
-		case input.UserAttributes[i].Name == "phone_number":
+		case input.UserAttributes[i].Name == PhoneNumberAttributeName:
 			phonenumber = input.UserAttributes[i].Value
 		default:
 		}
@@ -155,11 +116,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		if err != nil {
 			return
 		}
-		if DoSendMail(email, "邮箱验证码", code) != nil {
-			errs := fmt.Errorf("Verification code sending failed")
-			return nil, errs
+		if r.Config.SendMailFunc(email, "邮箱验证码", code) != nil {
+			err := fmt.Errorf("Verification code sending failed")
+			return nil, err
 		}
-		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: "email", DeliveryMedium: "EMAIL", Destination: masker.Mobile(email)}, UserConfirmed: false, UserSub: id.String()}
+		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: EmailAttributeName, DeliveryMedium: "EMAIL", Destination: masker.Mobile(email)}, UserConfirmed: false, UserSub: id.String()}
 		return
 	}
 	if r.Config.AllowSignInWithVerifiedPhoneNumber {
@@ -175,16 +136,16 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		if err != nil {
 			return
 		}
-		if SendMsg(phonenumber, code) != nil {
-			errs := fmt.Errorf("Verification code sending failed")
-			return nil, errs
+		if r.Config.SendMsgFunc(phonenumber, code) != nil {
+			err := fmt.Errorf("Verification code sending failed")
+			return nil, err
 		}
-		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
+		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
 		return
 
 	}
-	errs := fmt.Errorf("Config is nil")
-	return nil, errs
+	err = fmt.Errorf("verify email address and verify phone number can not be nil")
+	return
 
 }
 func (r *queryResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output bool, err error) {
@@ -202,12 +163,12 @@ func (r *queryResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSign
 }
 func (r *queryResolver) InitiateAuth(ctx context.Context, input api.InitiateAuthInput) (output *api.AuthenticationResult, err error) {
 	if input.AuthFlow == "" {
-		errs := fmt.Errorf("AuthFlow is nil")
-		return nil, errs
+		err = fmt.Errorf("AuthFlow is nil")
+		return nil, err
 	}
 	if input.AuthFlow != "USER_PASSWORD_AUTH" && input.AuthFlow != "EMAIL_PASSWORD_AUTH" && input.AuthFlow != "PHONENUMBER_PASSWORD_AUTH" {
-		errs := fmt.Errorf("Unknow AuthFlow")
-		return nil, errs
+		err = fmt.Errorf("Unknow AuthFlow")
+		return nil, err
 
 	}
 	if input.AuthFlow == "USER_PASSWORD_AUTH" {
@@ -219,9 +180,10 @@ func (r *queryResolver) InitiateAuth(ctx context.Context, input api.InitiateAuth
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(input.AuthParameters.Username)
+		AccessToken, err := CreateAccessToken(u.Username)
 		Idtoken, err := CreateIdToken(u.ID.String())
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: "", TokenType: ""}
+		RefreshToken, err := CreateRefreshToken(u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	if input.AuthFlow == "EMAIL_PASSWORD_AUTH" {
@@ -233,9 +195,10 @@ func (r *queryResolver) InitiateAuth(ctx context.Context, input api.InitiateAuth
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(input.AuthParameters.Username)
+		AccessToken, err := CreateAccessToken(u.Username)
 		Idtoken, err := CreateIdToken(u.ID.String())
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: "", TokenType: ""}
+		RefreshToken, err := CreateRefreshToken(u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	u, err := r.EntClient.User.Query().Where(user.PhoneNumber(input.AuthParameters.Username)).Only(ctx)
@@ -246,9 +209,10 @@ func (r *queryResolver) InitiateAuth(ctx context.Context, input api.InitiateAuth
 	if err != nil {
 		return
 	}
-	AccessToken, err := CreateAccessToken(input.AuthParameters.Username)
+	AccessToken, err := CreateAccessToken(u.Username)
 	Idtoken, err := CreateIdToken(u.ID.String())
-	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: "", TokenType: ""}
+	RefreshToken, err := CreateRefreshToken(u.Username)
+	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 	return
 }
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
@@ -280,26 +244,26 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
 	if r.Config.AllowSignInWithVerifiedEmailAddress && r.Config.AllowSignInWithVerifiedPhoneNumber {
-		errs := fmt.Errorf("Config is all true")
-		return nil, errs
+		err = fmt.Errorf("Config is all true")
+		return
 	}
 	if r.Config.AllowSignInWithVerifiedEmailAddress == false && r.Config.AllowSignInWithVerifiedPhoneNumber == false {
-		errs := fmt.Errorf("Config is all false")
-		return nil, errs
+		err = fmt.Errorf("Config is all false")
+		return
 	}
 	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
-		return nil, err
+		return
 	}
 	if r.Config.AllowSignInWithVerifiedEmailAddress {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 		if err != nil {
 			return nil, err
 		}
-		if DoSendMail(u.Email, "邮箱验证码", code) != nil {
-			errs := fmt.Errorf("Verification code sending failed")
-			return nil, errs
+		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
+			err = fmt.Errorf("Verification code sending failed")
+			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
 		if err != nil {
@@ -312,9 +276,9 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		if err != nil {
 			return nil, err
 		}
-		if SendMsg(u.PhoneNumber, code) != nil {
-			errs := fmt.Errorf("Verification code sending failed")
-			return nil, errs
+		if r.Config.SendMsgFunc(u.PhoneNumber, code) != nil {
+			err = fmt.Errorf("Verification code sending failed")
+			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
 		if err != nil {
@@ -322,8 +286,75 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		}
 		return &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(u.PhoneNumber)}, nil
 	}
-	errs := fmt.Errorf("Config is nil")
-	return nil, errs
+	err = fmt.Errorf("Config is nil")
+	return
+}
+func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output bool, err error) {
+	if r.Config.AllowSignInWithVerifiedEmailAddress && r.Config.AllowSignInWithVerifiedPhoneNumber {
+		err = fmt.Errorf("Config is all true")
+		return
+	}
+	if r.Config.AllowSignInWithVerifiedEmailAddress == false && r.Config.AllowSignInWithVerifiedPhoneNumber == false {
+		err = fmt.Errorf("Config is all false")
+		return
+	}
+	code := VerificationCode()
+	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+	if r.Config.AllowSignInWithVerifiedEmailAddress {
+		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
+		if err != nil {
+			return false, err
+		}
+		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
+			errs := fmt.Errorf("Verification code sending failed")
+			return false, errs
+		}
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	if r.Config.AllowSignInWithVerifiedPhoneNumber {
+		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
+		if err != nil {
+			return false, err
+		}
+		if r.Config.SendMsgFunc(u.PhoneNumber, code) != nil {
+			err = fmt.Errorf("Verification code sending failed")
+			return false, err
+		}
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).Save(ctx)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	err = fmt.Errorf("Config is nil")
+	return
+}
+func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output bool, err error) {
+	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
+	if err != nil {
+		return
+	}
+	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
+	if err != nil {
+		return
+	}
+	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetPasswordHash(string(password_hash)).Save(ctx)
+	if err != nil {
+		return
+	}
+	output = true
+	return
+}
+func (r *queryResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (bool, error) {
+	return true, nil
 }
 
 // Mutation returns MutationResolver implementation.

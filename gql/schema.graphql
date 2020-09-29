@@ -5,12 +5,15 @@ type Query {
     getUser(accessToken: String!): [User!]
     ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
     InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
+    GlobalSignOut(input: GlobalSignOutInput!):Boolean!
 }
 
 type Mutation {
-    signUp(input: SignUpInput!): User
+    SignUp(input: SignUpInput!): User
     ChangePassword(input: ChangePasswordInput!):Boolean!
     ForgotPassword(input: ForgotPasswordInput!): CodeDeliveryDetails
+    ResendConfirmationCode(input: ResendConfirmationCodeInput!):Boolean!
+    ConfirmForgotPassword(input: ConfirmForgotPasswordInput!):Boolean!
 }
 
 input SignUpInput {
@@ -35,6 +38,17 @@ input ChangePasswordInput{
 }
 input ForgotPasswordInput{
     Username:String!
+}
+input ResendConfirmationCodeInput{
+    Username:String!
+}
+input ConfirmForgotPasswordInput{
+    Username: String!
+    ConfirmationCode: String!
+    Password:String!
+}
+input GlobalSignOutInput{
+    AccessToken:String!
 }
 type AuthenticationResult {
     AccessToken: String!
