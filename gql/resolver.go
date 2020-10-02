@@ -33,6 +33,7 @@ const (
 	refreshtokenJwtSecretKey    = "refreshtoken"
 	refreshtokenJwtExpireSecond = 2592000
 )
+
 func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 
 	if config.SendMailFunc == nil {
@@ -73,7 +74,7 @@ func VerificationCode() string {
 	return code
 }
 func SendMail(stuEmail string, subject string, body string) (err error) {
-	var e *api.EmailConfig = &api.EmailConfig{User: "hd0728@qq.com", Pass: "vmvwgzfyzjsebeag", Host: "smtp.qq.com", Port: "465"}
+	var e *api.EmailConfig = &api.EmailConfig{User: "*******@qq.com", Pass: "", Host: "smtp.qq.com", Port: "465"}
 	mailTo := []string{stuEmail}
 	port, _ := strconv.Atoi(e.Port)
 
