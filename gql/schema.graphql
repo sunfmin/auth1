@@ -3,20 +3,81 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
 
 type Query {
     getUser(accessToken: String!): [User!]
+    ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
+    InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
+    GlobalSignOut(input: GlobalSignOutInput!):Boolean!
 }
 
 type Mutation {
-    signUp(input: SignUpInput!): User
+    SignUp(input: SignUpInput!): User
+    ChangePassword(input: ChangePasswordInput!):Boolean!
+    ForgotPassword(input: ForgotPasswordInput!): CodeDeliveryDetails
+    ResendConfirmationCode(input: ResendConfirmationCodeInput!):Boolean!
+    ConfirmForgotPassword(input: ConfirmForgotPasswordInput!):Boolean!
 }
 
 input SignUpInput {
-    password: String!
+    Username: String!
+    UserAttributes:[AttributeType]
+    Password: String!
+    
 }
-
+input ConfirmSignUpInput{
+    Username: String!
+    ConfirmationCode: String!
+}
+input InitiateAuthInput{
+    AuthFlow: String!
+    AuthParameters: AuthParameters
+    
+}
+input ChangePasswordInput{
+    AccessToken:String!
+    PreviousPassword:String!
+    ProposedPassword:String!
+}
+input ForgotPasswordInput{
+    Username:String!
+}
+input ResendConfirmationCodeInput{
+    Username:String!
+}
+input ConfirmForgotPasswordInput{
+    Username: String!
+    ConfirmationCode: String!
+    Password:String!
+}
+input GlobalSignOutInput{
+    AccessToken:String!
+}
+type AuthenticationResult {
+    AccessToken: String!
+    ExpiresIn: Int!
+    IdToken: String!
+    RefreshToken: String!    
+    TokenType: String! 
+}
+input AuthParameters{
+    Username: String!
+    Password: String!
+}
 type User {
-    id: ID!
+    CodeDeliveryDetails: CodeDeliveryDetails
+    UserConfirmed: Boolean!
+    UserSub: ID!
 }
-
+type ConfirmUser {
+   ConfirmUser:Boolean!
+}
+input AttributeType{
+    Name:String!
+    Value:String!
+}
+type CodeDeliveryDetails{
+    AttributeName: String!
+    DeliveryMedium: String!
+    Destination: String!
+}
 
 scalar Time
 scalar URI
