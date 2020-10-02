@@ -22,6 +22,9 @@ func (User) Fields() []ent.Field {
 		field.String("password_hash").Optional(),
 		field.String("confirmation_code_hash").Optional(),
 		field.JSON("user_attributes", []*api.AttributeType{}).Optional(),
+		field.Int("active_state").Optional(),
+		field.String("code_time").Optional(),
+		field.Int("token_state").Optional(),
 	}
 
 }
