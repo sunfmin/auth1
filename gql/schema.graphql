@@ -3,9 +3,6 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
 
 type Query {
     getUser(accessToken: String!): [User!]
-    ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
-    InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
-    GlobalSignOut(input: GlobalSignOutInput!):Boolean!
 }
 
 type Mutation {
@@ -14,6 +11,9 @@ type Mutation {
     ForgotPassword(input: ForgotPasswordInput!): CodeDeliveryDetails
     ResendConfirmationCode(input: ResendConfirmationCodeInput!):Boolean!
     ConfirmForgotPassword(input: ConfirmForgotPasswordInput!):Boolean!
+    ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
+    InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
+    GlobalSignOut(input: GlobalSignOutInput!):Boolean!
 }
 
 input SignUpInput {

@@ -2,8 +2,21 @@ package tests
 
 import (
 	"errors"
+	"fmt"
 	"github.com/sunfmin/auth1/gql/api"
 )
+
+var vcode=""
+func SendMailTest(stuEmail string, subject string, body string) (err error) {
+	vcode=body
+	fmt.Print("send success")
+	return nil
+}
+func SendMsgTest(tel string, code string) (err error) {
+	vcode=code
+	fmt.Print("send success")
+	return nil
+}
 
 var errSendmail =errors.New("graphql: Verification code sending failed")
 var userMutationCases = []GraphqlCase{
@@ -12,8 +25,10 @@ var userMutationCases = []GraphqlCase{
 		fixture: nil,
 		bootConfig: &api.BootConfig{
 			AllowSignInWithVerifiedEmailAddress: true,
-			AllowSignInWithVerifiedPhoneNumber:  false,
-			AllowSignInWithPreferredUsername:    false,
+			AllowSignInWithVerifiedPhoneNumber: false,
+			AllowSignInWithPreferredUsername: false,
+			SendMailFunc:SendMailTest,
+			SendMsgFunc: SendMsgTest,
 		},
 		query: `
 		mutation ($input: SignUpInput!) {
@@ -36,11 +51,11 @@ var userMutationCases = []GraphqlCase{
 					UserAttributes: []*api.AttributeType{
 						{
 							Name:  "email",
-							Value: "435418662@qq.com",
+							Value: "test@test.com",
 						},
 						{
 							Name:  "phone_number",
-							Value: "123",
+							Value: "test",
 						},
 					},
 					Password: "test",
@@ -57,10 +72,37 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	},{
+		name:    "ConfirmSignUp normal",
+		fixture: nil,
+		bootConfig: &api.BootConfig{
+			AllowSignInWithVerifiedEmailAddress: true,
+			AllowSignInWithVerifiedPhoneNumber: false,
+			AllowSignInWithPreferredUsername: false,
+			SendMailFunc:SendMailTest,
+			SendMsgFunc: SendMsgTest,
+		},
+		query: `
+		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
+		  ConfirmSignUp(input:$input)
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmSignUpInput{
+					Username: "test",
+					ConfirmationCode: vcode,
+				},
+			},
+		},
+		expected: &api.Data{
+			ConfirmSignUp: "true",
+		},
+	},/*{
 		name:    "InitiateAuth normal",
 		fixture: nil,
 		query: `
-		query InitiateAuth($input:InitiateAuthInput!){
+		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
 			AccessToken,
 			ExpiresIn,
@@ -127,7 +169,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expected: &api.Data{
-			ResendConfirmationCode: true,
+			ResendConfirmationCode: "true",
 		},
 	},{
 		name:    "MailSend error",
@@ -165,5 +207,5 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: errSendmail.Error(),
-	},
+	},*/
 }
