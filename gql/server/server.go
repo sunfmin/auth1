@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -15,14 +15,12 @@ import (
 
 const defaultPort = "8080"
 
-var vcode=""
+
 func SendMailTest(stuEmail string, subject string, body string) (err error) {
-	vcode=body
-	fmt.Print(vcode)
+	fmt.Print("send success")
 	return nil
 }
 func SendMsgTest(tel string, code string) (err error) {
-	vcode=code
 	fmt.Print("send success")
 	return nil
 }
@@ -39,7 +37,13 @@ func main() {
 			gql.Config{
 				Resolvers: gql.NewResolver(
 					boot.MustGetEntClient(),
-					&api.BootConfig{AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false,SendMailFunc:SendMailTest,SendMsgFunc: SendMsgTest},
+					&api.BootConfig{
+						AllowSignInWithVerifiedEmailAddress: true,
+						AllowSignInWithVerifiedPhoneNumber: false,
+						AllowSignInWithPreferredUsername: false,
+						SendMailFunc:SendMailTest,
+						SendMsgFunc: SendMsgTest,
+					},
 				),
 			},
 		)))

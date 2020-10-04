@@ -75,7 +75,7 @@ func VerificationCode() string {
 }
 
 func SendMail(stuEmail string, subject string, body string) (err error) {
-	var e *api.EmailConfig = &api.EmailConfig{User: "435418662@qq.com", Pass: "jmsakafwjynrcbag", Host: "smtp.qq.com", Port: "465"}
+	var e *api.EmailConfig = &api.EmailConfig{User: "*******@qq.com", Pass: "", Host: "smtp.qq.com", Port: "465"}
 	mailTo := []string{stuEmail}
 	port, _ := strconv.Atoi(e.Port)
 
@@ -158,7 +158,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		phonenumber string
 	)
 	id := uuid.New()
-	code := VerificationCode()
+	code := r.Config.CreateCodeFunc()
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -210,9 +210,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		Save(ctx)
 	if err != nil {
 		return
-
 	}
-	err = fmt.Errorf("verify email address and verify phone number can not be nil")
 	if r.Config.SendMsgFunc(phonenumber, code) != nil {
 		err := fmt.Errorf("Verification code sending failed")
 		return nil, err
@@ -220,20 +218,20 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
 	return
 }
-func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output bool, err error) {
+func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
-		return false, err
+		return &api.ConfirmOutput{ConfirmStatus: false}, err
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetActiveState(1).Save(ctx)
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateAuthInput) (output *api.AuthenticationResult, err error) {
@@ -308,7 +306,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
 	panic("not implemented")
 }
-func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangePasswordInput) (output bool, err error) {
+func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangePasswordInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = fmt.Errorf("AccessToken is nil")
 		return
@@ -334,11 +332,11 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := VerificationCode()
+	code := r.Config.CreateCodeFunc()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -373,7 +371,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	output = &api.CodeDeliveryDetails{AttributeName: "phone_number", DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(u.PhoneNumber)}
 	return
 }
-func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output bool, err error) {
+func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
 	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -382,17 +380,18 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	if r.Config.AllowSignInWithVerifiedEmailAddress {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 		if err != nil {
-			return false, err
+			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
 			errs := fmt.Errorf("Verification code sending failed")
-			return false, errs
+			return &api.ConfirmOutput{ConfirmStatus: false}, errs
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
 		if err != nil {
-			return false, err
+			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
-		return true, nil
+		output = &api.ConfirmOutput{ConfirmStatus: true}
+		return output, nil
 	}
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
@@ -406,10 +405,10 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
-func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output bool, err error) {
+func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
 		return
@@ -427,10 +426,10 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
-func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (output bool, err error) {
+func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = fmt.Errorf("AccessToken is nil")
 		return
@@ -443,7 +442,7 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 // Mutation returns MutationResolver implementation.
