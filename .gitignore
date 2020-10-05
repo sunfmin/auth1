@@ -1,5 +1,6 @@
 ent/*
 !ent/schema/
 gql/generated.go
-gql/api/
+gql/api/*
+!gql/api/config.go
 .idea/
