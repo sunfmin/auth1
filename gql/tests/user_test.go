@@ -20,7 +20,7 @@ func SendMsgTest(tel string, code string) (err error) {
 	return nil
 }
 func CreateAccessTokenTest(name string) (string, error) {
-	token := fakeAccessToken
+	token := TestAccessToken
 	return token,nil
 }
 func CreateAccessToken(name string) (string, error) {
@@ -33,7 +33,7 @@ func CreateAccessToken(name string) (string, error) {
 	return token.SignedString([]byte("welcomelogin"))
 }
 
-var fakeAccessToken,err = CreateAccessToken("test")
+var TestAccessToken,err = CreateAccessToken("test")
 
 var userMutationCases = []GraphqlCase{
 	{
@@ -45,7 +45,7 @@ var userMutationCases = []GraphqlCase{
 			AllowSignInWithPreferredUsername: false,
 			SendMailFunc: SendMailTest,
 			SendMsgFunc: SendMsgTest,
-			CreateAccessToken: CreateAccessTokenTest,
+			CreateAccessTokenFunc: CreateAccessTokenTest,
 			CreateCodeFunc: CreateTestCode,
 		},
 		query: `
@@ -90,6 +90,53 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	},{
+		name:    "InitiateAuth the user is not activated",
+		fixture: nil,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "USER_PASSWORD_AUTH",
+					AuthParameters: &api.AuthParameters{
+						Username: "test",
+						Password: "test",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: The user is not activated",
+	},{
+		name:    "ConfirmSignUp timeout",
+		fixture: nil,
+		query: `
+		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
+		  ConfirmSignUp(input:$input){
+					ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmSignUpInput{
+					Username: "test",
+					ConfirmationCode: "000000",
+				},
+			},
+		},
+		expectedError: "graphql: Captcha timeout",
+	},{
 		name:    "ConfirmSignUp normal",
 		fixture: nil,
 		query: `
@@ -113,6 +160,27 @@ var userMutationCases = []GraphqlCase{
 				ConfirmStatus: true,
 			},
 		},
+	},{
+		name:    "ChangePassword token is invalid",
+		fixture: nil,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken: TestAccessToken,
+					PreviousPassword: "test",
+					ProposedPassword: "test",
+				},
+			},
+		},
+		expectedError: "graphql: Token is invalid",
 	},{
 		name:    "InitiateAuth normal",
 		fixture: nil,
@@ -144,6 +212,115 @@ var userMutationCases = []GraphqlCase{
 				ExpiresIn: 3600,
 			},
 		},
+	},{
+		name:    "ChangePassword accesstoken is nil",
+		fixture: nil,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken: "",
+					PreviousPassword: "test",
+					ProposedPassword: "test",
+				},
+			},
+		},
+		expectedError: "graphql: AccessToken is nil",
+	},{
+		name:    "ChangePassword wrong previouspassword",
+		fixture: nil,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken: TestAccessToken,
+					PreviousPassword: "test_wrong_password",
+					ProposedPassword: "test",
+				},
+			},
+		},
+		expectedError: "graphql: Wrong PreviousPassword",
+	},{
+		name:    "ChangePassword password no change",
+		fixture: nil,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken: TestAccessToken,
+					PreviousPassword: "test",
+					ProposedPassword: "test",
+				},
+			},
+		},
+		expectedError: "graphql: The new password cannot be the same as the old password",
+	},{
+		name:    "ChangePassword normal",
+		fixture: nil,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken: TestAccessToken,
+					PreviousPassword: "test",
+					ProposedPassword: "newtest",
+				},
+			},
+		},
+		expected: &api.Data{
+			ChangePassword: &api.ConfirmOutput{
+				ConfirmStatus: true,
+			},
+		},
+	},{
+		name:    "ForgotPassword account does not exist",
+		fixture: nil,
+		query: `
+		mutation ($input:ForgotPasswordInput!){
+		  ForgotPassword(input:$input){
+			AttributeName,
+			DeliveryMedium,
+			Destination
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ForgotPasswordInput{
+					Username: "test_not_exist",
+				},
+			},
+		},
+		expectedError: "graphql: Account does not exist",
 	},{
 		name:    "ForgotPassword normal",
 		fixture: nil,
@@ -216,27 +393,133 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	},{
-		name:    "ChangePassword normal",
+		name:    "InitiateAuth AuthFlow is nil",
 		fixture: nil,
 		query: `
-		mutation ChangePassword($input:ChangePasswordInput!){
-		  ChangePassword(input:$input){
-			ConfirmStatus,
-		  }
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
 		}
 		`,
 		vars: []Var{
 			{
 				name: "input",
-				val: api.ChangePasswordInput{
-					AccessToken: fakeAccessToken,
-					PreviousPassword: "test",
-					ProposedPassword: "test",
+				val: api.InitiateAuthInput{
+					AuthFlow: "",
+					AuthParameters: &api.AuthParameters{
+						Username: "test",
+						Password: "test",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: AuthFlow is nil",
+	},{
+		name:    "InitiateAuth Unknown AuthFlow",
+		fixture: nil,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "test",
+					AuthParameters: &api.AuthParameters{
+						Username: "test",
+						Password: "test",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: Unknown AuthFlow",
+	},{
+		name:    "InitiateAuth User Not Found",
+		fixture: nil,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "USER_PASSWORD_AUTH",
+					AuthParameters: &api.AuthParameters{
+						Username: "test_unkonw",
+						Password: "test",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: ent: user not found",
+	},{
+		name:    "InitiateAuth Wrong Password",
+		fixture: nil,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "USER_PASSWORD_AUTH",
+					AuthParameters: &api.AuthParameters{
+						Username: "test",
+						Password: "test_wrong_password",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: crypto/bcrypt: hashedPassword is not the hash of the given password",
+	},{
+		name:    "GlobalSignOut normal",
+		fixture: nil,
+		query: `
+		mutation ($input:GlobalSignOutInput!){
+		  GlobalSignOut(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.GlobalSignOutInput{
+					AccessToken: TestAccessToken,
 				},
 			},
 		},
 		expected: &api.Data{
-			ChangePassword: &api.ConfirmOutput{
+			GlobalSignOut:&api.ConfirmOutput{
 				ConfirmStatus: true,
 			},
 		},

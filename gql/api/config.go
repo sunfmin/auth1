@@ -10,7 +10,7 @@ type BootConfig struct {
 	AllowSignInWithPreferredUsername    bool
 	PreSignUpFunc                       func(ctx context.Context, input SignUpInput) error
 	CreateCodeFunc						func() string
-	CreateAccessToken					func(name string) (string, error)
+	CreateAccessTokenFunc				func(name string) (string, error)
 	SendMailFunc                        func(stuEmail string, subject string, body string) (err error)
 	SendMsgFunc                         func(tel string, code string) (err error)
 }

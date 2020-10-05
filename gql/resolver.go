@@ -223,6 +223,10 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 	if err != nil {
 		return
 	}
+	err = TimeSub(u.CodeTime)
+	if err != nil {
+		return
+	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
 		return &api.ConfirmOutput{ConfirmStatus: false}, err
@@ -240,7 +244,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		return
 	}
 	if input.AuthFlow != "USER_PASSWORD_AUTH" && input.AuthFlow != "EMAIL_PASSWORD_AUTH" && input.AuthFlow != "PHONENUMBER_PASSWORD_AUTH" {
-		err = fmt.Errorf("Unknow AuthFlow")
+		err = fmt.Errorf("Unknown AuthFlow")
 		return
 	}
 	if input.AuthFlow == "USER_PASSWORD_AUTH" {
@@ -320,11 +324,16 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		return
 	}
 	if u.TokenState == 0 {
-		err = fmt.Errorf("token is invalid")
+		err = fmt.Errorf("Token is invalid")
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.PreviousPassword))
 	if err != nil {
+		err = fmt.Errorf("Wrong PreviousPassword")
+		return
+	}
+	if input.PreviousPassword==input.ProposedPassword {
+		err = fmt.Errorf("The new password cannot be the same as the old password")
 		return
 	}
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
@@ -344,6 +353,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	if r.Config.AllowSignInWithVerifiedEmailAddress {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
 		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
