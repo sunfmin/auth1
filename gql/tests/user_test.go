@@ -11,11 +11,20 @@ func CreateTestCode() string {
 	code := "111111"
 	return code
 }
+
 func SendMailTest(stuEmail string, subject string, body string) (err error) {
+	if stuEmail == "test_error" {
+		err := fmt.Errorf("Verification code sending failed")
+		return err
+	}
 	fmt.Printf("send success")
 	return nil
 }
 func SendMsgTest(tel string, code string) (err error) {
+	if tel == "test_error" {
+		err := fmt.Errorf("Verification code sending failed")
+		return err
+	}
 	fmt.Print("send success")
 	return nil
 }
@@ -37,7 +46,7 @@ var TestAccessToken,err = CreateAccessToken("test")
 
 var userMutationCases = []GraphqlCase{
 	{
-		name:    "SignUp normal",
+		name:    "SignUp verification code sending failed",
 		fixture: nil,
 		bootConfig: &api.BootConfig{
 			AllowSignInWithVerifiedEmailAddress: true,
@@ -48,6 +57,42 @@ var userMutationCases = []GraphqlCase{
 			CreateAccessTokenFunc: CreateAccessTokenTest,
 			CreateCodeFunc: CreateTestCode,
 		},
+		query: `
+		mutation ($input: SignUpInput!) {
+			SignUp(input: $input) {
+				CodeDeliveryDetails{
+					AttributeName,
+					DeliveryMedium,
+					Destination
+				  },
+			   UserConfirmed, 
+                  UserSub
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test_error",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test_error",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test_error",
+						},
+					},
+					Password: "test_error",
+				},
+			},
+		},
+		expectedError: "graphql: Verification code sending failed",
+	},{
+		name:    "SignUp normal",
+		fixture: nil,
 		query: `
 		mutation ($input: SignUpInput!) {
 			SignUp(input: $input) {
@@ -90,7 +135,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	},{
-		name:    "InitiateAuth the user is not activated",
+		name:    "InitiateAuth user is not activated",
 		fixture: nil,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
@@ -117,7 +162,27 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: The user is not activated",
 	},{
-		name:    "ConfirmSignUp timeout",
+		name:    "ConfirmSignUp account does not exist",
+		fixture: nil,
+		query: `
+		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
+		  ConfirmSignUp(input:$input){
+					ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmSignUpInput{
+					Username: "test_unknown",
+					ConfirmationCode: "111111",
+				},
+			},
+		},
+		expectedError: "graphql: Account does not exist",
+	},{
+		name:    "ConfirmSignUp verification code error",
 		fixture: nil,
 		query: `
 		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
@@ -135,7 +200,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Captcha timeout",
+		expectedError: "graphql: Wrong verification code",
 	},{
 		name:    "ConfirmSignUp normal",
 		fixture: nil,
@@ -322,6 +387,27 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: Account does not exist",
 	},{
+		name:    "ForgotPassword verification code sending failed",
+		fixture: nil,
+		query: `
+		mutation ($input:ForgotPasswordInput!){
+		  ForgotPassword(input:$input){
+			AttributeName,
+			DeliveryMedium,
+			Destination
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ForgotPasswordInput{
+					Username: "test_error",
+				},
+			},
+		},
+		expectedError: "graphql: Verification code sending failed",
+	},{
 		name:    "ForgotPassword normal",
 		fixture: nil,
 		query: `
@@ -344,6 +430,27 @@ var userMutationCases = []GraphqlCase{
 		expected: &api.Data{
 			ForgotPassword:&api.CodeDeliveryDetails{},
 		},
+	},{
+		name:    "ConfirmForgotPassword verification code error",
+		fixture: nil,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+		  ConfirmForgotPassword(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username: "test",
+					ConfirmationCode: "000000",
+					Password: "test",
+				},
+			},
+		},
+		expectedError: "graphql: Wrong verification code",
 	},{
 		name:    "ConfirmForgotPassword normal",
 		fixture: nil,
@@ -369,6 +476,25 @@ var userMutationCases = []GraphqlCase{
 				ConfirmStatus: true,
 			},
 		},
+	},{
+		name:    "ResendConfirmationCode verification code sending failed",
+		fixture: nil,
+		query: `
+		mutation ($input:ResendConfirmationCodeInput!){
+		  ResendConfirmationCode(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ResendConfirmationCodeInput{
+					Username: "test_error",
+				},
+			},
+		},
+		expectedError: "graphql: Verification code sending failed",
 	},{
 		name:    "ResendConfirmationCode normal",
 		fixture: nil,
@@ -447,7 +573,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: Unknown AuthFlow",
 	},{
-		name:    "InitiateAuth User Not Found",
+		name:    "InitiateAuth account does not exist",
 		fixture: nil,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
@@ -472,7 +598,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: ent: user not found",
+		expectedError: "graphql: Account does not exist",
 	},{
 		name:    "InitiateAuth Wrong Password",
 		fixture: nil,
@@ -499,7 +625,26 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: crypto/bcrypt: hashedPassword is not the hash of the given password",
+		expectedError: "graphql: Wrong password",
+	},{
+		name:    "GlobalSignOut accessToken is nil",
+		fixture: nil,
+		query: `
+		mutation ($input:GlobalSignOutInput!){
+		  GlobalSignOut(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.GlobalSignOutInput{
+					AccessToken: "",
+				},
+			},
+		},
+		expectedError: "graphql: AccessToken is nil",
 	},{
 		name:    "GlobalSignOut normal",
 		fixture: nil,

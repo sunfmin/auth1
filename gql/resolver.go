@@ -221,6 +221,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	err = TimeSub(u.CodeTime)
@@ -229,6 +230,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
+		err = fmt.Errorf("Wrong verification code")
 		return &api.ConfirmOutput{ConfirmStatus: false}, err
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetActiveState(1).Save(ctx)
@@ -250,6 +252,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	if input.AuthFlow == "USER_PASSWORD_AUTH" {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.AuthParameters.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
 		if u.ActiveState == 0 {
@@ -258,6 +261,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		}
 		err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 		if err != nil {
+			err = fmt.Errorf("Wrong password")
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.AuthParameters.Username)).SetTokenState(1).Save(ctx)
@@ -273,6 +277,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	if input.AuthFlow == "EMAIL_PASSWORD_AUTH" {
 		u, err := r.EntClient.User.Query().Where(user.Email(input.AuthParameters.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
 		if u.ActiveState == 0 {
@@ -281,6 +286,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		}
 		err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 		if err != nil {
+			err = fmt.Errorf("Wrong password")
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Email(input.AuthParameters.Username)).SetTokenState(1).Save(ctx)
@@ -295,10 +301,12 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	}
 	u, err := r.EntClient.User.Query().Where(user.PhoneNumber(input.AuthParameters.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 	if err != nil {
+		err = fmt.Errorf("Wrong password")
 		return
 	}
 	AccessToken, err := CreateAccessToken(u.Username)
@@ -421,6 +429,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	err = TimeSub(u.CodeTime)
@@ -429,6 +438,7 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
+		err = fmt.Errorf("Wrong verification code")
 		return
 	}
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
