@@ -26,6 +26,7 @@ func (User) Fields() []ent.Field {
 		field.String("code_time").Optional(),
 		field.Int("token_state").Optional(),
 	}
+
 }
 
 // Edges of the User.
