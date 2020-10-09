@@ -2,18 +2,33 @@ package tests
 
 import (
 	"context"
-	"testing"
-
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/auth1/gql/boot"
 	"github.com/sunfmin/graphql"
 	"github.com/theplant/testingutils"
+	"testing"
 )
 
 func defaultMatchIgnore(d *api.Data) {
 	if d.SignUp != nil {
 		d.SignUp.UserSub = ""
+		d.SignUp.UserConfirmed = false
+		d.SignUp.CodeDeliveryDetails.AttributeName = ""
+		d.SignUp.CodeDeliveryDetails.DeliveryMedium = ""
+		d.SignUp.CodeDeliveryDetails.Destination = ""
+	}
+	if d.InitiateAuth != nil {
+		d.InitiateAuth.AccessToken = ""
+		d.InitiateAuth.ExpiresIn = 3600
+		d.InitiateAuth.IDToken = ""
+		d.InitiateAuth.RefreshToken = ""
+		d.InitiateAuth.TokenType = ""
+	}
+	if d.ForgotPassword != nil {
+		d.ForgotPassword.AttributeName = ""
+		d.ForgotPassword.DeliveryMedium = ""
+		d.ForgotPassword.Destination = ""
 	}
 }
 
@@ -30,7 +45,7 @@ type GraphqlCase struct {
 	query           string
 	vars            []Var
 	expected        *api.Data
-	expectedError   error
+	expectedError   string
 	fixture         fixtureData
 	matchIgnoreFunc func(d *api.Data)
 }
@@ -60,10 +75,10 @@ func TestLogic(t0 *testing.T) {
 
 			var res = &api.Data{}
 			if err := client.Run(ctx, req, res); err != nil {
-				if c.expectedError == nil {
+				if c.expectedError == "" {
 					panic(err)
 				} else {
-					diff := testingutils.PrettyJsonDiff(c.expectedError, err)
+					diff := testingutils.PrettyJsonDiff(c.expectedError, err.Error())
 					if len(diff) > 0 {
 						t.Error(diff)
 					}
