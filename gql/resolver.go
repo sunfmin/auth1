@@ -224,7 +224,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = r.Config.TimeSubFunc(u.CodeTime)
 	if err != nil {
 		return
 	}
@@ -432,7 +432,7 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = r.Config.TimeSubFunc(u.CodeTime)
 	if err != nil {
 		return
 	}

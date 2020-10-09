@@ -28,6 +28,15 @@ func MustGetEntClient() *ent.Client {
 	return _entClient
 }
 
+func NewGraphqlClient(cfg *api.BootConfig) *graphql.Client {
+	var graphqlHandler = gql.NewHandler(MustGetEntClient(), cfg)
+	_client = graphql.NewClient("",
+		UseGoLog,
+		graphql.WithHTTPClient(&http.Client{Transport: handlertransport.New(graphqlHandler)}),
+	)
+	return _client
+}
+
 func UseGoLog(c *graphql.Client) {
 	c.Log = func(s string) {
 		log.Println(s)
@@ -45,12 +54,6 @@ func MustGetGraphqlClient(cfg *api.BootConfig) *graphql.Client {
 		cfg = &api.BootConfig{}
 	}
 
-	var graphqlHandler = gql.NewHandler(MustGetEntClient(), cfg)
-
-	_client = graphql.NewClient("",
-		UseGoLog,
-		graphql.WithHTTPClient(&http.Client{Transport: handlertransport.New(graphqlHandler)}),
-	)
-
+	_client = NewGraphqlClient(cfg)
 	return _client
 }

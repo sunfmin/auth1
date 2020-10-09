@@ -42,21 +42,43 @@ func CreateAccessToken(name string) (string, error) {
 	return token.SignedString([]byte("welcomelogin"))
 }
 
+func TimeSubTest(input string) (err error) {
+	return
+}
+func TimeSubTestFail(input string) (err error) {
+	err = fmt.Errorf("Captcha timeout")
+	return err
+}
+
 var TestAccessToken,err = CreateAccessToken("test")
+
+var NormalCfg = &api.BootConfig{
+	AllowSignInWithVerifiedEmailAddress: true,
+	AllowSignInWithVerifiedPhoneNumber: false,
+	AllowSignInWithPreferredUsername: false,
+	TimeSubFunc: TimeSubTest,
+	SendMailFunc: SendMailTest,
+	SendMsgFunc: SendMsgTest,
+	CreateAccessTokenFunc: CreateAccessTokenTest,
+	CreateCodeFunc: CreateTestCode,
+}
+
+var TimeoutCfg = &api.BootConfig{
+	AllowSignInWithVerifiedEmailAddress: true,
+	AllowSignInWithVerifiedPhoneNumber: false,
+	AllowSignInWithPreferredUsername: false,
+	TimeSubFunc: TimeSubTestFail,
+	SendMailFunc: SendMailTest,
+	SendMsgFunc: SendMsgTest,
+	CreateAccessTokenFunc: CreateAccessTokenTest,
+	CreateCodeFunc: CreateTestCode,
+}
 
 var userMutationCases = []GraphqlCase{
 	{
 		name:    "SignUp verification code sending failed",
 		fixture: nil,
-		bootConfig: &api.BootConfig{
-			AllowSignInWithVerifiedEmailAddress: true,
-			AllowSignInWithVerifiedPhoneNumber: false,
-			AllowSignInWithPreferredUsername: false,
-			SendMailFunc: SendMailTest,
-			SendMsgFunc: SendMsgTest,
-			CreateAccessTokenFunc: CreateAccessTokenTest,
-			CreateCodeFunc: CreateTestCode,
-		},
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input: SignUpInput!) {
 			SignUp(input: $input) {
@@ -93,6 +115,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "SignUp normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input: SignUpInput!) {
 			SignUp(input: $input) {
@@ -137,6 +160,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth user is not activated",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -164,6 +188,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ConfirmSignUp account does not exist",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 		  ConfirmSignUp(input:$input){
@@ -184,6 +209,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ConfirmSignUp verification code error",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 		  ConfirmSignUp(input:$input){
@@ -202,8 +228,30 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: Wrong verification code",
 	},{
+		name:    "ConfirmSignUp verification code timeout",
+		fixture: nil,
+		bootConfig: TimeoutCfg,
+		query: `
+		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
+		  ConfirmSignUp(input:$input){
+					ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmSignUpInput{
+					Username: "test",
+					ConfirmationCode: "111111",
+				},
+			},
+		},
+		expectedError: "graphql: Captcha timeout",
+	},{
 		name:    "ConfirmSignUp normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 		  ConfirmSignUp(input:$input){
@@ -228,6 +276,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ChangePassword token is invalid",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -249,6 +298,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -280,6 +330,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ChangePassword accesstoken is nil",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -301,6 +352,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ChangePassword wrong previouspassword",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -322,6 +374,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ChangePassword password no change",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -343,6 +396,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ChangePassword normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -368,6 +422,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ForgotPassword account does not exist",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -389,6 +444,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ForgotPassword verification code sending failed",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -410,6 +466,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ForgotPassword normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -433,6 +490,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ConfirmForgotPassword verification code error",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -452,8 +510,31 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: Wrong verification code",
 	},{
+		name:    "ConfirmForgotPassword verification code timeout",
+		fixture: nil,
+		bootConfig: TimeoutCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+		  ConfirmForgotPassword(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username: "test",
+					ConfirmationCode: "111111",
+					Password: "test",
+				},
+			},
+		},
+		expectedError: "graphql: Captcha timeout",
+	},{
 		name:    "ConfirmForgotPassword normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -479,6 +560,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ResendConfirmationCode verification code sending failed",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ResendConfirmationCodeInput!){
 		  ResendConfirmationCode(input:$input){
@@ -498,6 +580,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "ResendConfirmationCode normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:ResendConfirmationCodeInput!){
 		  ResendConfirmationCode(input:$input){
@@ -521,6 +604,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth AuthFlow is nil",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -548,6 +632,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth Unknown AuthFlow",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -575,6 +660,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth account does not exist",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -602,6 +688,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "InitiateAuth Wrong Password",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -629,6 +716,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "GlobalSignOut accessToken is nil",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:GlobalSignOutInput!){
 		  GlobalSignOut(input:$input){
@@ -648,6 +736,7 @@ var userMutationCases = []GraphqlCase{
 	},{
 		name:    "GlobalSignOut normal",
 		fixture: nil,
+		bootConfig: NormalCfg,
 		query: `
 		mutation ($input:GlobalSignOutInput!){
 		  GlobalSignOut(input:$input){

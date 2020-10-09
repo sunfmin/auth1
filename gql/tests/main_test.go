@@ -63,7 +63,7 @@ func TestLogic(t0 *testing.T) {
 
 	for _, c := range cases {
 		t0.Run(c.name, func(t *testing.T) {
-			client := boot.MustGetGraphqlClient(c.bootConfig)
+			client := boot.NewGraphqlClient(c.bootConfig)
 			if c.fixture != nil {
 				c.fixture(entClient)
 			}
