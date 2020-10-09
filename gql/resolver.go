@@ -21,20 +21,20 @@ import (
 )
 
 type Resolver struct {
-	EntClient *ent.Client
-	Config    *api.BootConfig
+	EntClient      *ent.Client
+	Config         *api.BootConfig
+	EmailConfig    *api.EmailConfig
+	PhoneConfig    *api.PhoneConfig
+	JwtTokenConfig *api.JwtTokenConfig
 }
 
 const (
-	JwtSecretKey                = "welcomelogin"
-	JwtExpireSecond             = 3600
-	EmailAttributeName          = "email"
-	PhoneNumberAttributeName    = "phone_number"
-	refreshtokenJwtSecretKey    = "refreshtoken"
-	refreshtokenJwtExpireSecond = 2592000
+	EmailAttributeName       = "email"
+	PhoneNumberAttributeName = "phone_number"
+	timeLayout               = "2006-01-02 15:04:05"
 )
 
-func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
+func NewResolver(entClient *ent.Client, config *api.BootConfig, EmailConfig *api.EmailConfig, PhoneConfig *api.PhoneConfig, JwtTokenConfig *api.JwtTokenConfig) (r *Resolver) {
 
 	if config.SendMailFunc == nil {
 		config.SendMailFunc = SendMail
@@ -42,22 +42,30 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	if config.SendMsgFunc == nil {
 		config.SendMsgFunc = SendMsg
 	}
+	if JwtTokenConfig == nil {
+		JwtTokenConfig = &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}
+	}
+	if EmailConfig == nil {
+		panic("SendEmailConfig is nil")
+	}
+	if PhoneConfig == nil {
+		panic("SendPhoneConfig is nil")
+	}
 	if config.AllowSignInWithVerifiedEmailAddress && config.AllowSignInWithVerifiedPhoneNumber {
 		panic("verify email address and verify phone number can not be true the same time")
 	}
 	if !config.AllowSignInWithVerifiedEmailAddress && !config.AllowSignInWithVerifiedPhoneNumber {
 		panic("verify email address and verify phone number can not be false the same time")
 	}
-	r = &Resolver{EntClient: entClient, Config: config}
+	r = &Resolver{EntClient: entClient, Config: config, EmailConfig: EmailConfig, PhoneConfig: PhoneConfig, JwtTokenConfig: JwtTokenConfig}
 	return
 }
 func NowTime() string {
 	timeUnix := time.Now().Unix()
-	formatTimeStr := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05")
+	formatTimeStr := time.Unix(timeUnix, 0).Format(timeLayout)
 	return formatTimeStr
 }
 func TimeSub(input string) (err error) {
-	timeLayout := "2006-01-02 15:04:05"
 	local, _ := time.LoadLocation("Local")
 	theTime, _ := time.ParseInLocation(timeLayout, input, local)
 	TimeNow := time.Now()
@@ -73,32 +81,30 @@ func VerificationCode() string {
 	code := fmt.Sprintf("%06v", rnd.Int31n(1000000))
 	return code
 }
-func SendMail(stuEmail string, subject string, body string) (err error) {
-	var e *api.EmailConfig = &api.EmailConfig{User: "*******@qq.com", Pass: "", Host: "smtp.qq.com", Port: "465"}
+func SendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	mailTo := []string{stuEmail}
-	port, _ := strconv.Atoi(e.Port)
+	port, _ := strconv.Atoi(EmailConfig.Port)
 
 	m := gomail.NewMessage()
-	m.SetHeader("From", m.FormatAddress(e.User, "验证码"))
+	m.SetHeader("From", m.FormatAddress(EmailConfig.User, "验证码"))
 	m.SetHeader("To", mailTo...)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 
-	d := gomail.NewDialer(e.Host, port, e.User, e.Pass)
+	d := gomail.NewDialer(EmailConfig.Host, port, EmailConfig.User, EmailConfig.Pass)
 	err = d.DialAndSend(m)
 	if err != nil {
 		return
 	}
 	return
 }
-func SendMsg(tel string, code string) (err error) {
-	var p *api.PhoneConfig = &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"}
-	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", p.AccesskeyId, p.AccessSecret)
+func SendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
+	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccesskeyId, PhoneConfig.AccessSecret)
 	request := dysmsapi.CreateSendSmsRequest()
 	request.Scheme = "https"
-	request.PhoneNumbers = tel            //手机号变量值
-	request.SignName = p.SignName         //签名
-	request.TemplateCode = p.TemplateCode //模板编码
+	request.PhoneNumbers = tel                      //手机号变量值
+	request.SignName = PhoneConfig.SignName         //签名
+	request.TemplateCode = PhoneConfig.TemplateCode //模板编码
 	request.TemplateParam = "{\"code\":\"" + code + "\"}"
 	response, err := client.SendSms(request)
 	fmt.Println(response.Code)
@@ -112,36 +118,35 @@ func SendMsg(tel string, code string) (err error) {
 	}
 	return
 }
-func CreateAccessToken(name string) (string, error) {
-
+func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
-		"exp":      time.Now().Add(time.Second * JwtExpireSecond).Unix(),
+		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
 	})
 
-	return token.SignedString([]byte(JwtSecretKey))
+	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
-func CreateIdToken(id string) (string, error) {
+func CreateIdToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"ID":  id,
-		"exp": time.Now().Add(time.Second * JwtExpireSecond).Unix(),
+		"exp": time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
 	})
 
-	return token.SignedString([]byte(JwtSecretKey))
+	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
-func CreateRefreshToken(id string) (string, error) {
+func CreateRefreshToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": id,
-		"exp":      time.Now().Add(time.Second * refreshtokenJwtExpireSecond).Unix(),
+		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.RefreshTokenJwtExpireSecond)).Unix(),
 	})
 
-	return token.SignedString([]byte(refreshtokenJwtSecretKey))
+	return token.SignedString([]byte(JwtTokenConfig.RefreshTokenJwtSecretKey))
 }
-func ParseJwtToken(s string) (jwt.MapClaims, error) {
+func ParseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims, error) {
 	fn := func(token *jwt.Token) (interface{}, error) {
-		return []byte(JwtSecretKey), nil
+		return []byte(JwtTokenConfig.JwtSecretKey), nil
 	}
 	result, error := jwt.Parse(s, fn)
 	if error != nil {
@@ -187,7 +192,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		if err != nil {
 			return
 		}
-		if r.Config.SendMailFunc(email, "邮箱验证码", code) != nil {
+		if r.Config.SendMailFunc(r.EmailConfig, email, "邮箱验证码", code) != nil {
 			err := fmt.Errorf("Verification code sending failed")
 			return nil, err
 		}
@@ -209,7 +214,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(phonenumber, code) != nil {
+	if r.Config.SendMsgFunc(r.PhoneConfig, phonenumber, code) != nil {
 		err := fmt.Errorf("Verification code sending failed")
 		return nil, err
 	}
@@ -263,10 +268,10 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(u.Username)
-		Idtoken, err := CreateIdToken(u.ID.String())
-		RefreshToken, err := CreateRefreshToken(u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+		AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
+		Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	if input.AuthFlow == "EMAIL_PASSWORD_AUTH" {
@@ -286,10 +291,10 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(u.Username)
-		Idtoken, err := CreateIdToken(u.ID.String())
-		RefreshToken, err := CreateRefreshToken(u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+		AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
+		Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	u, err := r.EntClient.User.Query().Where(user.PhoneNumber(input.AuthParameters.Username)).Only(ctx)
@@ -308,10 +313,10 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	if err != nil {
 		return
 	}
-	AccessToken, err := CreateAccessToken(u.Username)
-	Idtoken, err := CreateIdToken(u.ID.String())
-	RefreshToken, err := CreateRefreshToken(u.Username)
-	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+	AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
+	Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
+	RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
+	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 	return
 }
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
@@ -322,7 +327,7 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		err = fmt.Errorf("AccessToken is nil")
 		return
 	}
-	result, err := ParseJwtToken(input.AccessToken)
+	result, err := ParseJwtToken(r.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		return
 	}
@@ -357,7 +362,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		if err != nil {
 			return nil, err
 		}
-		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
+		if r.Config.SendMailFunc(r.EmailConfig, u.Email, "邮箱验证码", code) != nil {
 			err = fmt.Errorf("Verification code sending failed")
 			return nil, err
 		}
@@ -371,7 +376,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(u.PhoneNumber, code) != nil {
+	if r.Config.SendMsgFunc(r.PhoneConfig, u.PhoneNumber, code) != nil {
 		err = fmt.Errorf("Verification code sending failed")
 		return
 	}
@@ -394,7 +399,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 		if err != nil {
 			return false, err
 		}
-		if r.Config.SendMailFunc(u.Email, "邮箱验证码", code) != nil {
+		if r.Config.SendMailFunc(r.EmailConfig, u.Email, "邮箱验证码", code) != nil {
 			errs := fmt.Errorf("Verification code sending failed")
 			return false, errs
 		}
@@ -408,7 +413,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(u.PhoneNumber, code) != nil {
+	if r.Config.SendMsgFunc(r.PhoneConfig, u.PhoneNumber, code) != nil {
 		err = fmt.Errorf("Verification code sending failed")
 		return
 	}
@@ -446,7 +451,7 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 		err = fmt.Errorf("AccessToken is nil")
 		return
 	}
-	result, err := ParseJwtToken(input.AccessToken)
+	result, err := ParseJwtToken(r.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		return
 	}

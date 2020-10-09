@@ -14,15 +14,19 @@ import (
 )
 
 const defaultPort = "8080"
-var vcode=""
+
+var vcode = ""
+
 func SendMailTest(stuEmail string, subject string, body string) (err error) {
-	vcode=body
+	vcode = body
 	fmt.Print("send success")
+	fmt.Print(vcode)
 	return nil
 }
 func SendMsgTest(tel string, code string) (err error) {
-	vcode=code
+	vcode = code
 	fmt.Print("send success")
+	fmt.Print(vcode)
 	return nil
 }
 func main() {
@@ -37,7 +41,10 @@ func main() {
 			gql.Config{
 				Resolvers: gql.NewResolver(
 					boot.MustGetEntClient(),
-					&api.BootConfig{AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false,SendMailFunc:SendMailTest,SendMsgFunc: SendMsgTest},
+					&api.BootConfig{AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false},
+					&api.EmailConfig{User: "@qq.com", Pass: "授权码", Host: "smtp.qq.com", Port: "465"},
+					&api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
+					nil,
 				),
 			},
 		)))
