@@ -65,7 +65,7 @@ var NormalCfg = &api.BootConfig{
 	SendMsgFunc:                         SendMsgTest,
 	CreateAccessTokenFunc:               CreateAccessTokenTest,
 	CreateCodeFunc:                      CreateTestCode,
-	EmailConfig:                         &api.EmailConfig{User: "hd0728@qq.com", Pass: "tmpkbjlhscfibdii", Host: "smtp.qq.com", Port: "465"},
+	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 }
 
@@ -78,7 +78,7 @@ var TimeoutCfg = &api.BootConfig{
 	SendMsgFunc:                         SendMsgTest,
 	CreateAccessTokenFunc:               CreateAccessTokenTest,
 	CreateCodeFunc:                      CreateTestCode,
-	EmailConfig:                         &api.EmailConfig{User: "hd0728@qq.com", Pass: "tmpkbjlhscfibdii", Host: "smtp.qq.com", Port: "465"},
+	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 }
 
