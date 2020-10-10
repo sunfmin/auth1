@@ -1,16 +1,15 @@
 package boot
 
 import (
-	"log"
-	"net/http"
-	"os"
-
 	_ "github.com/lib/pq"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql"
 	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/graphql"
 	"github.com/sunfmin/handlertransport"
+	"log"
+	"net/http"
+	"os"
 )
 
 var _entClient *ent.Client
@@ -27,6 +26,15 @@ func MustGetEntClient() *ent.Client {
 		panic(err)
 	}
 	return _entClient
+}
+
+func NewGraphqlClient(cfg *api.BootConfig) *graphql.Client {
+	var graphqlHandler = gql.NewHandler(MustGetEntClient(), cfg)
+	_client = graphql.NewClient("",
+		UseGoLog,
+		graphql.WithHTTPClient(&http.Client{Transport: handlertransport.New(graphqlHandler)}),
+	)
+	return _client
 }
 
 func UseGoLog(c *graphql.Client) {
@@ -46,12 +54,6 @@ func MustGetGraphqlClient(cfg *api.BootConfig) *graphql.Client {
 		cfg = &api.BootConfig{}
 	}
 
-	var graphqlHandler = gql.NewHandler(MustGetEntClient(), cfg)
-
-	_client = graphql.NewClient("",
-		UseGoLog,
-		graphql.WithHTTPClient(&http.Client{Transport: handlertransport.New(graphqlHandler)}),
-	)
-
+	_client = NewGraphqlClient(cfg)
 	return _client
 }

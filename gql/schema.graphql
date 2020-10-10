@@ -7,20 +7,19 @@ type Query {
 
 type Mutation {
     SignUp(input: SignUpInput!): User
-    ChangePassword(input: ChangePasswordInput!):Boolean!
+    ChangePassword(input: ChangePasswordInput!):ConfirmOutput
     ForgotPassword(input: ForgotPasswordInput!): CodeDeliveryDetails
-    ResendConfirmationCode(input: ResendConfirmationCodeInput!):Boolean!
-    ConfirmForgotPassword(input: ConfirmForgotPasswordInput!):Boolean!
-    ConfirmSignUp(input: ConfirmSignUpInput!):Boolean!
+    ResendConfirmationCode(input: ResendConfirmationCodeInput!):ConfirmOutput
+    ConfirmForgotPassword(input: ConfirmForgotPasswordInput!):ConfirmOutput
+    ConfirmSignUp(input: ConfirmSignUpInput!):ConfirmOutput
     InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
-    GlobalSignOut(input: GlobalSignOutInput!):Boolean!
+    GlobalSignOut(input: GlobalSignOutInput!):ConfirmOutput
 }
 
 input SignUpInput {
     Username: String!
     UserAttributes:[AttributeType]
     Password: String!
-    
 }
 input ConfirmSignUpInput{
     Username: String!
@@ -65,7 +64,6 @@ type User {
     CodeDeliveryDetails: CodeDeliveryDetails
     UserConfirmed: Boolean!
     UserSub: ID!
-
 }
 type ConfirmUser {
    ConfirmUser:Boolean!
@@ -78,6 +76,10 @@ type CodeDeliveryDetails{
     AttributeName: String!
     DeliveryMedium: String!
     Destination: String!
+}
+
+type ConfirmOutput{
+    ConfirmStatus: Boolean!
 }
 
 scalar Time

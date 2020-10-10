@@ -41,10 +41,7 @@ func main() {
 			gql.Config{
 				Resolvers: gql.NewResolver(
 					boot.MustGetEntClient(),
-					&api.BootConfig{AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false},
-					&api.EmailConfig{User: "@qq.com", Pass: "授权码", Host: "smtp.qq.com", Port: "465"},
-					&api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
-					nil,
+					&api.BootConfig{AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false,EmailConfig:&api.EmailConfig{User: "hd0728@qq.com", Pass: "tmpkbjlhscfibdii", Host: "smtp.qq.com", Port: "465"},PhoneConfig:&api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},},
 				),
 			},
 		)))

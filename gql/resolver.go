@@ -23,9 +23,6 @@ import (
 type Resolver struct {
 	EntClient      *ent.Client
 	Config         *api.BootConfig
-	EmailConfig    *api.EmailConfig
-	PhoneConfig    *api.PhoneConfig
-	JwtTokenConfig *api.JwtTokenConfig
 }
 
 const (
@@ -34,7 +31,7 @@ const (
 	timeLayout               = "2006-01-02 15:04:05"
 )
 
-func NewResolver(entClient *ent.Client, config *api.BootConfig, EmailConfig *api.EmailConfig, PhoneConfig *api.PhoneConfig, JwtTokenConfig *api.JwtTokenConfig) (r *Resolver) {
+func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 
 	if config.SendMailFunc == nil {
 		config.SendMailFunc = SendMail
@@ -42,13 +39,22 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig, EmailConfig *api
 	if config.SendMsgFunc == nil {
 		config.SendMsgFunc = SendMsg
 	}
-	if JwtTokenConfig == nil {
-		JwtTokenConfig = &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}
+	if config.TimeSubFunc == nil {
+		config.TimeSubFunc = TimeSub
 	}
-	if EmailConfig == nil {
+	if config.CreateCodeFunc == nil {
+		config.CreateCodeFunc = VerificationCode
+	}
+	if config.CreateAccessTokenFunc == nil {
+		config.CreateAccessTokenFunc = CreateAccessToken
+	}
+	if config.JwtTokenConfig == nil {
+		config.JwtTokenConfig = &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}
+	}
+	if config.EmailConfig == nil {
 		panic("SendEmailConfig is nil")
 	}
-	if PhoneConfig == nil {
+	if config.PhoneConfig == nil {
 		panic("SendPhoneConfig is nil")
 	}
 	if config.AllowSignInWithVerifiedEmailAddress && config.AllowSignInWithVerifiedPhoneNumber {
@@ -57,7 +63,7 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig, EmailConfig *api
 	if !config.AllowSignInWithVerifiedEmailAddress && !config.AllowSignInWithVerifiedPhoneNumber {
 		panic("verify email address and verify phone number can not be false the same time")
 	}
-	r = &Resolver{EntClient: entClient, Config: config, EmailConfig: EmailConfig, PhoneConfig: PhoneConfig, JwtTokenConfig: JwtTokenConfig}
+	r = &Resolver{EntClient: entClient, Config: config}
 	return
 }
 func NowTime() string {
@@ -161,7 +167,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		phonenumber string
 	)
 	id := uuid.New()
-	code := VerificationCode()
+	code := r.Config.CreateCodeFunc()
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -192,7 +198,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		if err != nil {
 			return
 		}
-		if r.Config.SendMailFunc(r.EmailConfig, email, "邮箱验证码", code) != nil {
+		if r.Config.SendMailFunc(r.Config.EmailConfig, email, "邮箱验证码", code) != nil {
 			err := fmt.Errorf("Verification code sending failed")
 			return nil, err
 		}
@@ -214,31 +220,33 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(r.PhoneConfig, phonenumber, code) != nil {
+	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phonenumber, code) != nil {
 		err := fmt.Errorf("Verification code sending failed")
 		return nil, err
 	}
 	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
 	return
 }
-func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output bool, err error) {
+func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = r.Config.TimeSubFunc(u.CodeTime)
 	if err != nil {
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
-		return false, err
+		err = fmt.Errorf("Wrong verification code")
+		return &api.ConfirmOutput{ConfirmStatus: false}, err
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetActiveState(1).Save(ctx)
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateAuthInput) (output *api.AuthenticationResult, err error) {
@@ -247,13 +255,14 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		return
 	}
 	if input.AuthFlow != "USER_PASSWORD_AUTH" && input.AuthFlow != "EMAIL_PASSWORD_AUTH" && input.AuthFlow != "PHONENUMBER_PASSWORD_AUTH" {
-		err = fmt.Errorf("Unknow AuthFlow")
+		err = fmt.Errorf("Unknown AuthFlow")
 		return
 
 	}
 	if input.AuthFlow == "USER_PASSWORD_AUTH" {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.AuthParameters.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
 		if u.ActiveState == 0 {
@@ -262,21 +271,23 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		}
 		err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 		if err != nil {
+			err = fmt.Errorf("Wrong password")
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.AuthParameters.Username)).SetTokenState(1).Save(ctx)
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
-		Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+		AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
+		Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	if input.AuthFlow == "EMAIL_PASSWORD_AUTH" {
 		u, err := r.EntClient.User.Query().Where(user.Email(input.AuthParameters.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
 		if u.ActiveState == 0 {
@@ -285,20 +296,22 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		}
 		err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 		if err != nil {
+			err = fmt.Errorf("Wrong password")
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Email(input.AuthParameters.Username)).SetTokenState(1).Save(ctx)
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
-		Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+		AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
+		Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
+		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
 	u, err := r.EntClient.User.Query().Where(user.PhoneNumber(input.AuthParameters.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	if u.ActiveState == 0 {
@@ -307,27 +320,28 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.AuthParameters.Password))
 	if err != nil {
+		err = fmt.Errorf("Wrong password")
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.PhoneNumber(input.AuthParameters.Username)).SetTokenState(1).Save(ctx)
 	if err != nil {
 		return
 	}
-	AccessToken, err := CreateAccessToken(r.JwtTokenConfig, u.Username)
-	Idtoken, err := CreateIdToken(r.JwtTokenConfig, u.ID.String())
-	RefreshToken, err := CreateRefreshToken(r.JwtTokenConfig, u.Username)
-	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+	AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
+	Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
+	RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
+	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 	return
 }
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
 	panic("not implemented")
 }
-func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangePasswordInput) (output bool, err error) {
+func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangePasswordInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = fmt.Errorf("AccessToken is nil")
 		return
 	}
-	result, err := ParseJwtToken(r.JwtTokenConfig, input.AccessToken)
+	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		return
 	}
@@ -336,11 +350,16 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		return
 	}
 	if u.TokenState == 0 {
-		err = fmt.Errorf("token is invalid")
+		err = fmt.Errorf("Token is invalid")
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.PreviousPassword))
 	if err != nil {
+		err = fmt.Errorf("Wrong PreviousPassword")
+		return
+	}
+	if input.PreviousPassword == input.ProposedPassword {
+		err = fmt.Errorf("The new password cannot be the same as the old password")
 		return
 	}
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
@@ -348,11 +367,11 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := VerificationCode()
+	code := r.Config.CreateCodeFunc()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -360,9 +379,10 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	if r.Config.AllowSignInWithVerifiedEmailAddress {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 		if err != nil {
+			err = fmt.Errorf("Account does not exist")
 			return nil, err
 		}
-		if r.Config.SendMailFunc(r.EmailConfig, u.Email, "邮箱验证码", code) != nil {
+		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
 			err = fmt.Errorf("Verification code sending failed")
 			return nil, err
 		}
@@ -374,9 +394,10 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	}
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	if r.Config.SendMsgFunc(r.PhoneConfig, u.PhoneNumber, code) != nil {
+	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
 		err = fmt.Errorf("Verification code sending failed")
 		return
 	}
@@ -388,8 +409,8 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	return
 
 }
-func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output bool, err error) {
-	code := VerificationCode()
+func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
+	code := r.Config.CreateCodeFunc()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -397,23 +418,24 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	if r.Config.AllowSignInWithVerifiedEmailAddress {
 		u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 		if err != nil {
-			return false, err
+			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
-		if r.Config.SendMailFunc(r.EmailConfig, u.Email, "邮箱验证码", code) != nil {
-			errs := fmt.Errorf("Verification code sending failed")
-			return false, errs
+		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
+			err := fmt.Errorf("Verification code sending failed")
+			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
 		if err != nil {
-			return false, err
+			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
-		return true, nil
+		output = &api.ConfirmOutput{ConfirmStatus: true}
+		return output, nil
 	}
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(r.PhoneConfig, u.PhoneNumber, code) != nil {
+	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
 		err = fmt.Errorf("Verification code sending failed")
 		return
 	}
@@ -421,21 +443,23 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 
 }
-func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output bool, err error) {
+func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = r.Config.TimeSubFunc(u.CodeTime)
 	if err != nil {
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
+		err = fmt.Errorf("Wrong verification code")
 		return
 	}
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
@@ -443,15 +467,15 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
-func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (output bool, err error) {
+func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = fmt.Errorf("AccessToken is nil")
 		return
 	}
-	result, err := ParseJwtToken(r.JwtTokenConfig, input.AccessToken)
+	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		return
 	}
@@ -459,7 +483,7 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 	if err != nil {
 		return
 	}
-	output = true
+	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 
