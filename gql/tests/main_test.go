@@ -32,7 +32,7 @@ func defaultMatchIgnore(d *api.Data) {
 	}
 }
 
-type fixtureData func(client *ent.Client)
+type fixtureData func(ctx context.Context, client *ent.Client)
 
 type Var struct {
 	name string
@@ -50,6 +50,13 @@ type GraphqlCase struct {
 	matchIgnoreFunc func(d *api.Data)
 }
 
+func emptyData(ctx context.Context, entClient *ent.Client) {
+	_, err := entClient.User.Delete().Exec(ctx)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestLogic(t0 *testing.T) {
 	ctx := context.TODO()
 	var cases []GraphqlCase
@@ -64,8 +71,9 @@ func TestLogic(t0 *testing.T) {
 	for _, c := range cases {
 		t0.Run(c.name, func(t *testing.T) {
 			client := boot.NewGraphqlClient(c.bootConfig)
+			emptyData(ctx, entClient)
 			if c.fixture != nil {
-				c.fixture(entClient)
+				c.fixture(ctx, entClient)
 			}
 
 			req := graphql.NewRequest(c.query)
