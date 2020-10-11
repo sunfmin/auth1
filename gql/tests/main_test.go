@@ -2,12 +2,13 @@ package tests
 
 import (
 	"context"
+	"testing"
+
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/auth1/gql/boot"
 	"github.com/sunfmin/graphql"
 	"github.com/theplant/testingutils"
-	"testing"
 )
 
 func defaultMatchIgnore(d *api.Data) {

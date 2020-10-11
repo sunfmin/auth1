@@ -3,11 +3,12 @@ package tests
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
-	"time"
 )
 
 func CreateTestCode() string {
@@ -15,7 +16,7 @@ func CreateTestCode() string {
 	return code
 }
 
-func SendMailTest(stuEmail string, subject string, body string) (err error) {
+func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	if stuEmail == "test_error" {
 		err := fmt.Errorf("Verification code sending failed")
 		return err
@@ -23,7 +24,7 @@ func SendMailTest(stuEmail string, subject string, body string) (err error) {
 	fmt.Printf("send success")
 	return nil
 }
-func SendMsgTest(tel string, code string) (err error) {
+func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
 	if tel == "test_error" {
 		err := fmt.Errorf("Verification code sending failed")
 		return err
@@ -31,7 +32,7 @@ func SendMsgTest(tel string, code string) (err error) {
 	fmt.Print("send success")
 	return nil
 }
-func CreateAccessTokenTest(name string) (string, error) {
+func CreateAccessTokenTest(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := TestAccessToken
 	return token, nil
 }
@@ -64,6 +65,8 @@ var NormalCfg = &api.BootConfig{
 	SendMsgFunc:                         SendMsgTest,
 	CreateAccessTokenFunc:               CreateAccessTokenTest,
 	CreateCodeFunc:                      CreateTestCode,
+	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
+	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 }
 
 var TimeoutCfg = &api.BootConfig{
@@ -75,6 +78,8 @@ var TimeoutCfg = &api.BootConfig{
 	SendMsgFunc:                         SendMsgTest,
 	CreateAccessTokenFunc:               CreateAccessTokenTest,
 	CreateCodeFunc:                      CreateTestCode,
+	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
+	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 }
 
 var userMutationCases = []GraphqlCase{
