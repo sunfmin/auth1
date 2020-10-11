@@ -158,7 +158,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		phonenumber string
 	)
 	id := uuid.New()
-	code := r.Config.CreateCodeFunc()
+	code := r.Config.CreateVerificationCodeFunc()
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -340,7 +340,7 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		err = fmt.Errorf("Wrong PreviousPassword")
 		return
 	}
-	if input.PreviousPassword==input.ProposedPassword {
+	if input.PreviousPassword == input.ProposedPassword {
 		err = fmt.Errorf("The new password cannot be the same as the old password")
 		return
 	}
@@ -353,7 +353,7 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	return
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := r.Config.CreateCodeFunc()
+	code := r.Config.CreateVerificationCodeFunc()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -465,6 +465,7 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 

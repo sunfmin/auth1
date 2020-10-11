@@ -9,9 +9,9 @@ type BootConfig struct {
 	AllowSignInWithVerifiedPhoneNumber  bool
 	AllowSignInWithPreferredUsername    bool
 	PreSignUpFunc                       func(ctx context.Context, input SignUpInput) error
-	TimeSubFunc							func(input string) (err error)
-	CreateCodeFunc						func() string
-	CreateAccessTokenFunc				func(name string) (string, error)
+	TimeSubFunc                         func(input string) (err error)
+	CreateVerificationCodeFunc          func() string
+	CreateAccessTokenFunc               func(name string) (string, error)
 	SendMailFunc                        func(stuEmail string, subject string, body string) (err error)
 	SendMsgFunc                         func(tel string, code string) (err error)
 }
@@ -23,8 +23,8 @@ type EmailConfig struct {
 }
 
 type PhoneConfig struct {
-	AccesskeyId string
+	AccesskeyId  string
 	AccessSecret string
-	SignName string
+	SignName     string
 	TemplateCode string
 }
