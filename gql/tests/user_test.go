@@ -10,13 +10,7 @@ import (
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql/api"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
-
-func VerificationCodeTest() string {
-	code := "111111"
-	return code
-}
 
 func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	if stuEmail == "test_error" {
@@ -34,63 +28,42 @@ func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err err
 	fmt.Print("send success")
 	return nil
 }
-func CreateAccessTokenTest(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
-	token := TestAccessToken
-	return token, nil
-}
-func CreateAccessToken(name string) (string, error) {
 
+func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
-		"exp":      time.Now().Add(time.Second * 3600).Unix(),
+		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
 	})
 
-	return token.SignedString([]byte("welcomelogin"))
+	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
 
-func TimeSubTestPass(input string) (err error) {
-	return
-}
-func TimeSubTestFail(input string) (err error) {
-	err = fmt.Errorf("Captcha timeout")
-	return err
+func NowTime() string {
+	timeUnix := time.Now().Unix()
+	formatTimeStr := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05")
+	return formatTimeStr
 }
 
-var TestAccessToken, _ = CreateAccessToken("test")
+var TestAccessToken, _ = CreateAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
 var code_hash, _ = bcrypt.GenerateFromPassword([]byte("111111"), bcrypt.DefaultCost)
 var password_hash, _ = bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 
-var NormalCfg = &api.BootConfig{
+var TestCfg = &api.BootConfig{
 	AllowSignInWithVerifiedEmailAddress: true,
 	AllowSignInWithVerifiedPhoneNumber:  false,
 	AllowSignInWithPreferredUsername:    false,
-	TimeSubFunc:                         TimeSubTestPass,
 	SendMailFunc:                        SendMailTest,
 	SendMsgFunc:                         SendMsgTest,
-	CreateAccessTokenFunc:               CreateAccessTokenTest,
-	CreateCodeFunc:                      CreateTestCode,
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
-}
-
-var TimeoutCfg = &api.BootConfig{
-	AllowSignInWithVerifiedEmailAddress: true,
-	AllowSignInWithVerifiedPhoneNumber:  false,
-	AllowSignInWithPreferredUsername:    false,
-	TimeSubFunc:                         TimeSubTestFail,
-	SendMailFunc:                        SendMailTest,
-	SendMsgFunc:                         SendMsgTest,
-	CreateAccessTokenFunc:               CreateAccessTokenTest,
-	CreateCodeFunc:                      CreateTestCode,
-	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
-	PhoneConfig:                         &api.PhoneConfig{AccesskeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
+	JwtTokenConfig:                      &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000},
 }
 
 var userMutationCases = []GraphqlCase{
 	{
 		name:       "SignUp normal",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ($input: SignUpInput!) {
 				SignUp(input: $input) {
@@ -135,7 +108,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "SignUp verification code sending failed",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ($input: SignUpInput!) {
 				SignUp(input: $input) {
@@ -177,10 +150,11 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 			  ConfirmSignUp(input:$input){
@@ -205,7 +179,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "ConfirmSignUp account does not exist",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 			  ConfirmSignUp(input:$input){
@@ -232,9 +206,10 @@ var userMutationCases = []GraphqlCase{
 				SetEmail("test_error").
 				SetID(uuid.New()).
 				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 			  ConfirmSignUp(input:$input){
@@ -259,10 +234,11 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test_error").
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
+				SetCodeTime("2006-01-02 15:04:05").
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: TimeoutCfg,
+		bootConfig: TestCfg,
 		query: `
 			mutation ConfirmSignUp($input:ConfirmSignUpInput!){
 			  ConfirmSignUp(input:$input){
@@ -292,7 +268,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -326,7 +302,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -348,7 +324,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "ChangePassword accesstoken is nil",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -379,7 +355,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -410,7 +386,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ChangePassword($input:ChangePasswordInput!){
 		  ChangePassword(input:$input){
@@ -439,7 +415,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -463,7 +439,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "ForgotPassword account does not exist",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -492,7 +468,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ForgotPasswordInput!){
 		  ForgotPassword(input:$input){
@@ -519,10 +495,11 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -547,7 +524,7 @@ var userMutationCases = []GraphqlCase{
 		},
 	}, {
 		name:       "ConfirmForgotPassword account does not exist",
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -574,10 +551,11 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
 				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -607,7 +585,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: TimeoutCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -636,7 +614,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ResendConfirmationCodeInput!){
 		  ResendConfirmationCode(input:$input){
@@ -667,7 +645,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:ResendConfirmationCodeInput!){
 		  ResendConfirmationCode(input:$input){
@@ -696,7 +674,7 @@ var userMutationCases = []GraphqlCase{
 				SetActiveState(1).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -736,7 +714,7 @@ var userMutationCases = []GraphqlCase{
 				SetActiveState(0).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -764,7 +742,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "InitiateAuth AuthFlow is nil",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -792,7 +770,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "InitiateAuth Unknown AuthFlow",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -820,7 +798,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "InitiateAuth account does not exist",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -857,7 +835,7 @@ var userMutationCases = []GraphqlCase{
 				SetActiveState(1).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation InitiateAuth($input:InitiateAuthInput!){
 		  InitiateAuth(input:$input){
@@ -892,7 +870,7 @@ var userMutationCases = []GraphqlCase{
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:GlobalSignOutInput!){
 		  GlobalSignOut(input:$input){
@@ -916,7 +894,7 @@ var userMutationCases = []GraphqlCase{
 	}, {
 		name:       "GlobalSignOut accessToken is nil",
 		fixture:    nil,
-		bootConfig: NormalCfg,
+		bootConfig: TestCfg,
 		query: `
 		mutation ($input:GlobalSignOutInput!){
 		  GlobalSignOut(input:$input){
