@@ -21,8 +21,8 @@ import (
 )
 
 type Resolver struct {
-	EntClient      *ent.Client
-	Config         *api.BootConfig
+	EntClient *ent.Client
+	Config    *api.BootConfig
 }
 
 const (
@@ -38,12 +38,6 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	}
 	if config.SendMsgFunc == nil {
 		config.SendMsgFunc = SendMsg
-	}
-	if config.TimeSubFunc == nil {
-		config.TimeSubFunc = TimeSub
-	}
-	if config.CreateCodeFunc == nil {
-		config.CreateCodeFunc = VerificationCode
 	}
 	if config.CreateAccessTokenFunc == nil {
 		config.CreateAccessTokenFunc = CreateAccessToken
@@ -167,7 +161,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		phonenumber string
 	)
 	id := uuid.New()
-	code := r.Config.CreateCodeFunc()
+	code := VerificationCode()
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
@@ -233,7 +227,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = r.Config.TimeSubFunc(u.CodeTime)
+	err = TimeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
@@ -343,10 +337,12 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	}
 	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
+		err = fmt.Errorf("ParseJwtToken failed")
 		return
 	}
 	u, err := r.EntClient.User.Query().Where(user.Username(result["Username"].(string))).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	if u.TokenState == 0 {
@@ -365,13 +361,14 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
 	_, err = r.EntClient.User.Update().Where(user.Username(result["Username"].(string))).SetPasswordHash(string(password_hash)).Save(ctx)
 	if err != nil {
+		err = fmt.Errorf("Update failed")
 		return
 	}
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := r.Config.CreateCodeFunc()
+	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -410,7 +407,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 
 }
 func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
-	code := r.Config.CreateCodeFunc()
+	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -453,7 +450,7 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = r.Config.TimeSubFunc(u.CodeTime)
+	err = TimeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
