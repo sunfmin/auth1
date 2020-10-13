@@ -1,15 +1,16 @@
 package boot
 
 import (
+	"log"
+	"net/http"
+	"os"
+
 	_ "github.com/lib/pq"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql"
 	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/graphql"
 	"github.com/sunfmin/handlertransport"
-	"log"
-	"net/http"
-	"os"
 )
 
 var _entClient *ent.Client

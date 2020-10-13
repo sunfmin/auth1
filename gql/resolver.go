@@ -99,7 +99,7 @@ func SendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, bod
 	return
 }
 func SendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
-	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccesskeyId, PhoneConfig.AccessSecret)
+	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccessKeyId, PhoneConfig.AccessSecret)
 	request := dysmsapi.CreateSendSmsRequest()
 	request.Scheme = "https"
 	request.PhoneNumbers = tel                      //手机号变量值
@@ -158,12 +158,12 @@ func ParseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims,
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
 	var (
 		email       string
-		phonenumber string
+		phoneNumber string
 	)
 	id := uuid.New()
 	code := VerificationCode()
-	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	codeHash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
 	}
@@ -172,7 +172,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		case input.UserAttributes[i].Name == EmailAttributeName:
 			email = input.UserAttributes[i].Value
 		case input.UserAttributes[i].Name == PhoneNumberAttributeName:
-			phonenumber = input.UserAttributes[i].Value
+			phoneNumber = input.UserAttributes[i].Value
 		default:
 		}
 	}
@@ -180,10 +180,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		_, err = r.EntClient.User.Create().
 			SetID(id).
 			SetUsername(input.Username).
-			SetPasswordHash(string(password_hash)).
+			SetPasswordHash(string(passwordHash)).
 			SetEmail(email).
-			SetPhoneNumber(phonenumber).
-			SetConfirmationCodeHash(string(code_hash)).
+			SetPhoneNumber(phoneNumber).
+			SetConfirmationCodeHash(string(codeHash)).
 			SetUserAttributes(input.UserAttributes).
 			SetActiveState(0).
 			SetCodeTime(NowTime()).
@@ -202,10 +202,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	_, err = r.EntClient.User.Create().
 		SetID(id).
 		SetUsername(input.Username).
-		SetPasswordHash(string(password_hash)).
-		SetPhoneNumber(phonenumber).
+		SetPasswordHash(string(passwordHash)).
+		SetPhoneNumber(phoneNumber).
 		SetEmail(email).
-		SetConfirmationCodeHash(string(code_hash)).
+		SetConfirmationCodeHash(string(codeHash)).
 		SetUserAttributes(input.UserAttributes).
 		SetActiveState(0).
 		SetCodeTime(NowTime()).
@@ -214,11 +214,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phonenumber, code) != nil {
+	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phoneNumber, code) != nil {
 		err := fmt.Errorf("Verification code sending failed")
 		return nil, err
 	}
-	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
+	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phoneNumber)}, UserConfirmed: false, UserSub: id.String()}
 	return
 }
 func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
