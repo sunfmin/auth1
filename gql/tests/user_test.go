@@ -14,7 +14,7 @@ import (
 
 func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	if stuEmail == "test_error" {
-		err := fmt.Errorf("Verification code sending failed")
+		err := api.ErrVerificationCode
 		return err
 	}
 	fmt.Printf("send success")
@@ -22,7 +22,7 @@ func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string,
 }
 func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
 	if tel == "test_error" {
-		err := fmt.Errorf("Verification code sending failed")
+		err := api.ErrVerificationCode
 		return err
 	}
 	fmt.Print("send success")
@@ -141,7 +141,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Verification code sending failed",
+		expectedError: "graphql: " + api.ErrVerificationCode.Error(),
 	}, {
 		name: "ConfirmSignUp normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -486,7 +486,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Verification code sending failed",
+		expectedError: "graphql: " + api.ErrVerificationCode.Error(),
 	}, {
 		name: "ConfirmForgotPassword normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -661,7 +661,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Verification code sending failed",
+		expectedError: "graphql: " + api.ErrVerificationCode.Error(),
 	}, {
 		name: "InitiateAuth normal",
 		fixture: func(ctx context.Context, client *ent.Client) {

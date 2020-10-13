@@ -3,4 +3,5 @@ ent/*
 gql/generated.go
 gql/api/*
 !gql/api/config.go
+!gql/api/errors.go
 .idea/

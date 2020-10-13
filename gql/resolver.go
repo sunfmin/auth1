@@ -193,7 +193,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 			return
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, email, "邮箱验证码", code) != nil {
-			err := fmt.Errorf("Verification code sending failed")
+			err := api.ErrVerificationCode
 			return nil, err
 		}
 		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: EmailAttributeName, DeliveryMedium: "EMAIL", Destination: masker.Mobile(email)}, UserConfirmed: false, UserSub: id.String()}
@@ -215,7 +215,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		return
 	}
 	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phoneNumber, code) != nil {
-		err := fmt.Errorf("Verification code sending failed")
+		err := api.ErrVerificationCode
 		return nil, err
 	}
 	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phoneNumber)}, UserConfirmed: false, UserSub: id.String()}
@@ -380,7 +380,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 			return nil, err
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
-			err = fmt.Errorf("Verification code sending failed")
+			err = api.ErrVerificationCode
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -395,7 +395,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		return
 	}
 	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
-		err = fmt.Errorf("Verification code sending failed")
+		err = api.ErrVerificationCode
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -418,7 +418,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
-			err := fmt.Errorf("Verification code sending failed")
+			err := api.ErrVerificationCode
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -433,7 +433,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 		return
 	}
 	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
-		err = fmt.Errorf("Verification code sending failed")
+		err = api.ErrVerificationCode
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
