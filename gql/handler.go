@@ -12,7 +12,7 @@ func NewHandler(db *ent.Client, cfg *api.BootConfig) (r http.Handler) {
 	var graphqlHandler = handler.NewDefaultServer(
 		NewExecutableSchema(Config{Resolvers: &Resolver{
 			EntClient: db,
-			Config: cfg,
+			Config:    cfg,
 		}}),
 	)
 

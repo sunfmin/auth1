@@ -21,8 +21,8 @@ import (
 )
 
 type Resolver struct {
-	EntClient      *ent.Client
-	Config         *api.BootConfig
+	EntClient *ent.Client
+	Config    *api.BootConfig
 }
 
 const (
@@ -38,12 +38,6 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	}
 	if config.SendMsgFunc == nil {
 		config.SendMsgFunc = SendMsg
-	}
-	if config.TimeSubFunc == nil {
-		config.TimeSubFunc = TimeSub
-	}
-	if config.CreateCodeFunc == nil {
-		config.CreateCodeFunc = VerificationCode
 	}
 	if config.CreateAccessTokenFunc == nil {
 		config.CreateAccessTokenFunc = CreateAccessToken
@@ -105,7 +99,7 @@ func SendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, bod
 	return
 }
 func SendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
-	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccesskeyId, PhoneConfig.AccessSecret)
+	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccessKeyId, PhoneConfig.AccessSecret)
 	request := dysmsapi.CreateSendSmsRequest()
 	request.Scheme = "https"
 	request.PhoneNumbers = tel                      //手机号变量值
@@ -164,12 +158,12 @@ func ParseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims,
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
 	var (
 		email       string
-		phonenumber string
+		phoneNumber string
 	)
 	id := uuid.New()
-	code := r.Config.CreateCodeFunc()
-	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	code := VerificationCode()
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	codeHash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
 	}
@@ -178,7 +172,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		case input.UserAttributes[i].Name == EmailAttributeName:
 			email = input.UserAttributes[i].Value
 		case input.UserAttributes[i].Name == PhoneNumberAttributeName:
-			phonenumber = input.UserAttributes[i].Value
+			phoneNumber = input.UserAttributes[i].Value
 		default:
 		}
 	}
@@ -186,10 +180,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		_, err = r.EntClient.User.Create().
 			SetID(id).
 			SetUsername(input.Username).
-			SetPasswordHash(string(password_hash)).
+			SetPasswordHash(string(passwordHash)).
 			SetEmail(email).
-			SetPhoneNumber(phonenumber).
-			SetConfirmationCodeHash(string(code_hash)).
+			SetPhoneNumber(phoneNumber).
+			SetConfirmationCodeHash(string(codeHash)).
 			SetUserAttributes(input.UserAttributes).
 			SetActiveState(0).
 			SetCodeTime(NowTime()).
@@ -199,7 +193,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 			return
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, email, "邮箱验证码", code) != nil {
-			err := fmt.Errorf("Verification code sending failed")
+			err := api.ErrVerificationCode
 			return nil, err
 		}
 		output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: EmailAttributeName, DeliveryMedium: "EMAIL", Destination: masker.Mobile(email)}, UserConfirmed: false, UserSub: id.String()}
@@ -208,10 +202,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	_, err = r.EntClient.User.Create().
 		SetID(id).
 		SetUsername(input.Username).
-		SetPasswordHash(string(password_hash)).
-		SetPhoneNumber(phonenumber).
+		SetPasswordHash(string(passwordHash)).
+		SetPhoneNumber(phoneNumber).
 		SetEmail(email).
-		SetConfirmationCodeHash(string(code_hash)).
+		SetConfirmationCodeHash(string(codeHash)).
 		SetUserAttributes(input.UserAttributes).
 		SetActiveState(0).
 		SetCodeTime(NowTime()).
@@ -220,11 +214,11 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	if err != nil {
 		return
 	}
-	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phonenumber, code) != nil {
-		err := fmt.Errorf("Verification code sending failed")
+	if r.Config.SendMsgFunc(r.Config.PhoneConfig, phoneNumber, code) != nil {
+		err := api.ErrVerificationCode
 		return nil, err
 	}
-	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phonenumber)}, UserConfirmed: false, UserSub: id.String()}
+	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phoneNumber)}, UserConfirmed: false, UserSub: id.String()}
 	return
 }
 func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
@@ -233,7 +227,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = r.Config.TimeSubFunc(u.CodeTime)
+	err = TimeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
@@ -343,10 +337,12 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	}
 	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
+		err = fmt.Errorf("ParseJwtToken failed")
 		return
 	}
 	u, err := r.EntClient.User.Query().Where(user.Username(result["Username"].(string))).Only(ctx)
 	if err != nil {
+		err = fmt.Errorf("Account does not exist")
 		return
 	}
 	if u.TokenState == 0 {
@@ -365,13 +361,14 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	password_hash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
 	_, err = r.EntClient.User.Update().Where(user.Username(result["Username"].(string))).SetPasswordHash(string(password_hash)).Save(ctx)
 	if err != nil {
+		err = fmt.Errorf("Update failed")
 		return
 	}
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := r.Config.CreateCodeFunc()
+	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -383,7 +380,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 			return nil, err
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
-			err = fmt.Errorf("Verification code sending failed")
+			err = api.ErrVerificationCode
 			return nil, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -398,7 +395,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		return
 	}
 	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
-		err = fmt.Errorf("Verification code sending failed")
+		err = api.ErrVerificationCode
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -410,7 +407,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 
 }
 func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
-	code := r.Config.CreateCodeFunc()
+	code := VerificationCode()
 	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -421,7 +418,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		if r.Config.SendMailFunc(r.Config.EmailConfig, u.Email, "邮箱验证码", code) != nil {
-			err := fmt.Errorf("Verification code sending failed")
+			err := api.ErrVerificationCode
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
 		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -436,7 +433,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 		return
 	}
 	if r.Config.SendMsgFunc(r.Config.PhoneConfig, u.PhoneNumber, code) != nil {
-		err = fmt.Errorf("Verification code sending failed")
+		err = api.ErrVerificationCode
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(NowTime()).Save(ctx)
@@ -453,7 +450,7 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 		err = fmt.Errorf("Account does not exist")
 		return
 	}
-	err = r.Config.TimeSubFunc(u.CodeTime)
+	err = TimeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
