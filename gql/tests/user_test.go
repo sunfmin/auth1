@@ -196,7 +196,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Account does not exist",
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "ConfirmSignUp verification code error",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -226,7 +226,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Wrong verification code",
+		expectedError: "graphql: " + api.ErrWrongverificationcode.Error(),
 	}, {
 		name: "ConfirmSignUp verification code timeout",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -255,7 +255,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Captcha timeout",
+		expectedError: "graphql: " + api.ErrCaptchaTimeout.Error(),
 	}, {
 		name: "ChangePassword normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -320,7 +320,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Token is invalid",
+		expectedError: "graphql: " + api.ErrTokeInvalid.Error(),
 	}, {
 		name:       "ChangePassword accesstoken is nil",
 		fixture:    nil,
@@ -342,7 +342,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: AccessToken is nil",
+		expectedError: "graphql: " + api.ErrAccessTokenNil.Error(),
 	}, {
 		name: "ChangePassword wrong previouspassword",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -373,7 +373,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Wrong PreviousPassword",
+		expectedError: "graphql: " + api.ErrWrongPassword.Error(),
 	}, {
 		name: "ChangePassword password no change",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -404,7 +404,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: The new password cannot be the same as the old password",
+		expectedError: "graphql: " + api.ErrSamePassword.Error(),
 	}, {
 		name: "ForgotPassword normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -457,7 +457,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Account does not exist",
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "ForgotPassword verification code sending failed",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -542,7 +542,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Account does not exist",
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "ConfirmForgotPassword verification code error",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -573,7 +573,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Wrong verification code",
+		expectedError: "graphql: " + api.ErrWrongverificationcode.Error(),
 	}, {
 		name: "ConfirmForgotPassword verification code timeout",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -603,7 +603,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Captcha timeout",
+		expectedError: "graphql: " + api.ErrCaptchaTimeout.Error(),
 	}, {
 		name: "ResendConfirmationCode normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -738,7 +738,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: The user is not activated",
+		expectedError: "graphql: " + api.ErrUserNotActivated.Error(),
 	}, {
 		name:       "InitiateAuth AuthFlow is nil",
 		fixture:    nil,
@@ -766,7 +766,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: AuthFlow is nil",
+		expectedError: "graphql: " + api.ErrAuthFlowIsNil.Error(),
 	}, {
 		name:       "InitiateAuth Unknown AuthFlow",
 		fixture:    nil,
@@ -794,7 +794,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Unknown AuthFlow",
+		expectedError: "graphql: " + api.ErrUnknownAuthFlow.Error(),
 	}, {
 		name:       "InitiateAuth account does not exist",
 		fixture:    nil,
@@ -822,7 +822,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Account does not exist",
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "InitiateAuth Wrong Password",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -859,7 +859,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: Wrong password",
+		expectedError: "graphql: " + api.ErrWrongPassword.Error(),
 	}, {
 		name: "GlobalSignOut normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -868,6 +868,7 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetID(uuid.New()).
+				SetTokenState(1).
 				SaveX(ctx)
 		},
 		bootConfig: TestCfg,
@@ -910,6 +911,6 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: AccessToken is nil",
+		expectedError: "graphql: " + api.ErrAccessTokenNil.Error(),
 	},
 }
