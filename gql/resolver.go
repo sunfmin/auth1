@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"strconv"
 	"time"
+	"regexp"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
 	"github.com/dgrijalva/jwt-go"
@@ -59,6 +60,45 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	}
 	r = &Resolver{EntClient: entClient, Config: config}
 	return
+}
+func VerifyPwd (Password string,MinimumLength int,Number bool,SpecialCharacter bool,UppercaseLetters bool,LowercaseLetters bool)(err error){
+	num := `[0-9]{1}`
+	a_z := `[a-z]{1}`
+	A_Z := `[A-Z]{1}`
+	symbol := `[!@#~$%^&*()+|_]{1}`
+	if Password == "" {
+		err = api.ErrPasswordEmpty
+		return 
+	}
+	if len(Password)<MinimumLength{
+		err = api.ErrPasswordTooShort
+		return 
+	}
+	if Number{
+		if b, err := regexp.MatchString(num,Password); !b || err != nil {
+			err=api.ErrPasswordNumber
+			return err
+		}
+	}
+	if SpecialCharacter{
+		if b, err := regexp.MatchString(symbol,Password); !b || err != nil {
+			err=api.ErrPasswordSpecialCharacter
+			return err
+		}
+	}
+	if UppercaseLetters{
+		if b, err := regexp.MatchString(A_Z,Password); !b || err != nil {
+			err=api.ErrPasswordUppercaseLetters
+			return err
+		}
+	}
+	if LowercaseLetters{
+		if b, err := regexp.MatchString(a_z,Password); !b || err != nil {
+			err=api.ErrPasswordLowercaseLetters
+			return err
+		}
+	}
+	return nil
 }
 func NowTime() string {
 	timeUnix := time.Now().Unix()
@@ -161,6 +201,10 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	)
 	id := uuid.New()
 	code := VerificationCode()
+	err = VerifyPwd(input.Password,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
+	if err!=nil{
+		return
+	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrPasswordHash
@@ -378,6 +422,10 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		err = api.ErrSamePassword
 		return
 	}
+	err = VerifyPwd(input.ProposedPassword,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
+	if err!=nil{
+		return
+	}
 	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrPasswordHash
@@ -484,6 +532,10 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
 		err = api.ErrWrongverificationcode
+		return
+	}
+	err = VerifyPwd(input.Password,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
+	if err!=nil{
 		return
 	}
 	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)

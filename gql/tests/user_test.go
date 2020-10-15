@@ -57,6 +57,11 @@ var TestCfg = &api.BootConfig{
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccessKeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 	JwtTokenConfig:                      &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000},
+	MinimumLength:                          8,
+	RequireNumber:                       true,
+	RequireSpecialCharacter:             true,
+	RequireUppercaseLetters:             true,
+	RequireLowercaseLetters:             true,
 }
 
 var userMutationCases = []GraphqlCase{
@@ -92,7 +97,7 @@ var userMutationCases = []GraphqlCase{
 							Value: "test",
 						},
 					},
-					Password: "test",
+					Password: "Test@12345678",
 				},
 			},
 		},
@@ -137,7 +142,7 @@ var userMutationCases = []GraphqlCase{
 							Value: "test_error",
 						},
 					},
-					Password: "test_error",
+					Password: "Test@12345678",
 				},
 			},
 		},
@@ -282,7 +287,7 @@ var userMutationCases = []GraphqlCase{
 				val: api.ChangePasswordInput{
 					AccessToken:      TestAccessToken,
 					PreviousPassword: "password",
-					ProposedPassword: "new_password",
+					ProposedPassword: "Test@12345678",
 				},
 			},
 		},
@@ -513,7 +518,7 @@ var userMutationCases = []GraphqlCase{
 				val: api.ConfirmForgotPasswordInput{
 					Username:         "test",
 					ConfirmationCode: "111111",
-					Password:         "test",
+					Password:         "Test@12345678",
 				},
 			},
 		},
@@ -538,7 +543,7 @@ var userMutationCases = []GraphqlCase{
 				val: api.ConfirmForgotPasswordInput{
 					Username:         "test",
 					ConfirmationCode: "111111",
-					Password:         "test",
+					Password:         "Test@12345678",
 				},
 			},
 		},

@@ -15,6 +15,11 @@ type BootConfig struct {
 	EmailConfig                         *EmailConfig
 	PhoneConfig                         *PhoneConfig
 	JwtTokenConfig                      *JwtTokenConfig
+	MinimumLength                       int
+	RequireNumber                       bool
+	RequireSpecialCharacter             bool
+	RequireUppercaseLetters             bool
+	RequireLowercaseLetters             bool
 }
 
 type EmailConfig struct {
