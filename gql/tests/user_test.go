@@ -45,6 +45,7 @@ func NowTime() string {
 }
 
 var TestAccessToken, _ = CreateAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var FailedAccessToken, _ = CreateAccessToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
 var code_hash, _ = bcrypt.GenerateFromPassword([]byte("111111"), bcrypt.DefaultCost)
 var password_hash, _ = bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 
@@ -144,7 +145,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
 	}, {
-		name:       "SignUp password is empty",
+		name:       "SignUp password need number",
 		fixture:    nil,
 		bootConfig: TestCfg,
 		query: `
@@ -255,7 +256,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrPasswordSpecialCharacter.Error(),
 	}, {
-		name:       "SignUp password need special uppercase letters",
+		name:       "SignUp password need uppercase letters",
 		fixture:    nil,
 		bootConfig: TestCfg,
 		query: `
@@ -292,7 +293,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrPasswordUppercaseLetters.Error(),
 	}, {
-		name:       "SignUp password need special lowercase letters",
+		name:       "SignUp password need lowercase letters",
 		fixture:    nil,
 		bootConfig: TestCfg,
 		query: `
@@ -365,6 +366,52 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrVerificationCode.Error(),
+	}, {
+		name: "SignUp user already exists",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test_error").
+				SetPhoneNumber("test_error").
+				SetEmail("test_error").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test_error",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test_error",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test_error",
+						},
+					},
+					Password: "Test@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrUserExists.Error(),
 	}, {
 		name: "ConfirmSignUp normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -515,6 +562,223 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	}, {
+		name: "ChangePassword parsejwttoken failed",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      FailedAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "Test@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrParseJwtTokenFailed.Error(),
+	}, {
+		name: "ChangePassword password is too short",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "Test@12",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordTooShort.Error(),
+	}, {
+		name: "ChangePassword password is empty",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordEmpty.Error(),
+	}, {
+		name: "ChangePassword password need special character",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "Test1235678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordSpecialCharacter.Error(),
+	}, {
+		name: "ChangePassword password need number",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "Test@qwweerrrtt",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
+	}, {
+		name: "ChangePassword password need uppercase letters",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "test@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordUppercaseLetters.Error(),
+	}, {
+		name: "ChangePassword password need lowercase letters",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(password_hash)).
+				SetTokenState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "TEST@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordLowercaseLetters.Error(),
+	}, {
 		name: "ChangePassword token is invalid",
 		fixture: func(ctx context.Context, client *ent.Client) {
 			client.User.Create().
@@ -566,6 +830,28 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrAccessTokenNil.Error(),
+	}, {
+		name:       "ChangePassword account does not exist",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+		mutation ChangePassword($input:ChangePasswordInput!){
+		  ChangePassword(input:$input){
+			ConfirmStatus,
+		  }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ChangePasswordInput{
+					AccessToken:      TestAccessToken,
+					PreviousPassword: "password",
+					ProposedPassword: "new_password",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "ChangePassword wrong previouspassword",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -746,8 +1032,195 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	}, {
+		name: "ConfirmForgotPassword password is too short",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "Test@12",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordTooShort.Error(),
+	}, {
+		name: "ConfirmForgotPassword password is empty",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordEmpty.Error(),
+	}, {
+		name: "ConfirmForgotPassword password need special character",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "Test1235678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordSpecialCharacter.Error(),
+	}, {
+		name: "ConfirmForgotPassword password need number",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "Test@qwweerrrtt",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
+	}, {
+		name: "ConfirmForgotPassword password need uppercase letters",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "test@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordUppercaseLetters.Error(),
+	}, {
+		name: "ConfirmForgotPassword password need lowercase letters",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetConfirmationCodeHash(string(code_hash)).
+				SetCodeTime(NowTime()).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ConfirmForgotPasswordInput!){
+			ConfirmForgotPassword(input:$input){
+				  ConfirmStatus,
+			  }
+		  }
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ConfirmForgotPasswordInput{
+					Username:         "test",
+					ConfirmationCode: "111111",
+					Password:         "TEST@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordLowercaseLetters.Error(),
+	}, {
 		name:       "ConfirmForgotPassword account does not exist",
 		bootConfig: TestCfg,
+		fixture:    nil,
 		query: `
 		mutation ($input:ConfirmForgotPasswordInput!){
 		  ConfirmForgotPassword(input:$input){
@@ -885,6 +1358,26 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrVerificationCode.Error(),
+	}, {
+		name:       "ResendConfirmationCode account does not exist",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:ResendConfirmationCodeInput!){
+		  ResendConfirmationCode(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.ResendConfirmationCodeInput{
+					Username: "test_error",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
 		name: "InitiateAuth normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -1116,6 +1609,34 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 	}, {
+		name: "GlobalSignOut parsejwttoken failed",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetID(uuid.New()).
+				SetTokenState(1).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:GlobalSignOutInput!){
+		  GlobalSignOut(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.GlobalSignOutInput{
+					AccessToken: FailedAccessToken,
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrParseJwtTokenFailed.Error(),
+	}, {
 		name:       "GlobalSignOut accessToken is nil",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -1135,5 +1656,25 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrAccessTokenNil.Error(),
+	}, {
+		name:       "GlobalSignOut account does not exist",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+		mutation ($input:GlobalSignOutInput!){
+		  GlobalSignOut(input:$input){
+				ConfirmStatus,
+			}
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.GlobalSignOutInput{
+					AccessToken: TestAccessToken,
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	},
 }
