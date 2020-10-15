@@ -6,9 +6,9 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"regexp"
 	"strconv"
 	"time"
-	"regexp"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/dysmsapi"
 	"github.com/dgrijalva/jwt-go"
@@ -61,40 +61,40 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	r = &Resolver{EntClient: entClient, Config: config}
 	return
 }
-func VerifyPwd (Password string,MinimumLength int,Number bool,SpecialCharacter bool,UppercaseLetters bool,LowercaseLetters bool)(err error){
+func VerifyPwd(Password string, PassowrdConfig *api.PasswordConfig) (err error) {
 	num := `[0-9]{1}`
 	a_z := `[a-z]{1}`
 	A_Z := `[A-Z]{1}`
 	symbol := `[!@#~$%^&*()+|_]{1}`
 	if Password == "" {
 		err = api.ErrPasswordEmpty
-		return 
+		return
 	}
-	if len(Password)<MinimumLength{
+	if len(Password) < PassowrdConfig.MinimumLength {
 		err = api.ErrPasswordTooShort
-		return 
+		return
 	}
-	if Number{
-		if b, err := regexp.MatchString(num,Password); !b || err != nil {
-			err=api.ErrPasswordNumber
+	if PassowrdConfig.RequireNumber {
+		if b, err := regexp.MatchString(num, Password); !b || err != nil {
+			err = api.ErrPasswordNumber
 			return err
 		}
 	}
-	if SpecialCharacter{
-		if b, err := regexp.MatchString(symbol,Password); !b || err != nil {
-			err=api.ErrPasswordSpecialCharacter
+	if PassowrdConfig.RequireSpecialCharacter {
+		if b, err := regexp.MatchString(symbol, Password); !b || err != nil {
+			err = api.ErrPasswordSpecialCharacter
 			return err
 		}
 	}
-	if UppercaseLetters{
-		if b, err := regexp.MatchString(A_Z,Password); !b || err != nil {
-			err=api.ErrPasswordUppercaseLetters
+	if PassowrdConfig.RequireUppercaseLetters {
+		if b, err := regexp.MatchString(A_Z, Password); !b || err != nil {
+			err = api.ErrPasswordUppercaseLetters
 			return err
 		}
 	}
-	if LowercaseLetters{
-		if b, err := regexp.MatchString(a_z,Password); !b || err != nil {
-			err=api.ErrPasswordLowercaseLetters
+	if PassowrdConfig.RequireLowercaseLetters {
+		if b, err := regexp.MatchString(a_z, Password); !b || err != nil {
+			err = api.ErrPasswordLowercaseLetters
 			return err
 		}
 	}
@@ -201,8 +201,8 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	)
 	id := uuid.New()
 	code := VerificationCode()
-	err = VerifyPwd(input.Password,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
-	if err!=nil{
+	err = VerifyPwd(input.Password, r.Config.PasswordConfig)
+	if err != nil {
 		return
 	}
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
@@ -297,7 +297,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
-		err = api.ErrWrongverificationcode
+		err = api.ErrWrongVerificationCode
 		return &api.ConfirmOutput{ConfirmStatus: false}, err
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetActiveState(1).Save(ctx)
@@ -422,8 +422,8 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		err = api.ErrSamePassword
 		return
 	}
-	err = VerifyPwd(input.ProposedPassword,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
-	if err!=nil{
+	err = VerifyPwd(input.ProposedPassword, r.Config.PasswordConfig)
+	if err != nil {
 		return
 	}
 	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
@@ -531,11 +531,11 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.ConfirmationCodeHash), []byte(input.ConfirmationCode))
 	if err != nil {
-		err = api.ErrWrongverificationcode
+		err = api.ErrWrongVerificationCode
 		return
 	}
-	err = VerifyPwd(input.Password,r.Config.MinimumLength,r.Config.RequireNumber,r.Config.RequireSpecialCharacter,r.Config.RequireUppercaseLetters,r.Config.RequireLowercaseLetters)
-	if err!=nil{
+	err = VerifyPwd(input.Password, r.Config.PasswordConfig)
+	if err != nil {
 		return
 	}
 	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
