@@ -106,7 +106,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-	},{
+	}, {
 		name:       "SignUp password requires numbers",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -143,7 +143,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
-	},{
+	}, {
 		name:       "SignUp password is empty",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -180,7 +180,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrPasswordEmpty.Error(),
-	},{
+	}, {
 		name:       "SignUp password is too short",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -217,7 +217,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrPasswordTooShort.Error(),
-	},{
+	}, {
 		name:       "SignUp password need special character",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -254,7 +254,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrPasswordSpecialCharacter.Error(),
-	},{
+	}, {
 		name:       "SignUp password need special uppercase letters",
 		fixture:    nil,
 		bootConfig: TestCfg,
@@ -291,7 +291,7 @@ var userMutationCases = []GraphqlCase{
 			},
 		},
 		expectedError: "graphql: " + api.ErrPasswordUppercaseLetters.Error(),
-	},{
+	}, {
 		name:       "SignUp password need special lowercase letters",
 		fixture:    nil,
 		bootConfig: TestCfg,
