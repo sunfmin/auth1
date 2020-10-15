@@ -52,6 +52,9 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	if config.PhoneConfig == nil {
 		panic("SendPhoneConfig is nil")
 	}
+	if config.PasswordConfig == nil {
+		panic("PasswordConfig is nil")
+	}
 	if config.AllowSignInWithVerifiedEmailAddress && config.AllowSignInWithVerifiedPhoneNumber {
 		panic("verify email address and verify phone number can not be true the same time")
 	}

@@ -22,6 +22,6 @@ var (
 	ErrPasswordEmpty            = fmt.Errorf("The password is empty")
 	ErrPasswordTooShort         = fmt.Errorf("The password is too short")
 	ErrPasswordSpecialCharacter = fmt.Errorf("The password need special character")
-	ErrPasswordUppercaseLetters = fmt.Errorf("The password need special uppercase letters")
-	ErrPasswordLowercaseLetters = fmt.Errorf("The password need special lowercase letters")
+	ErrPasswordUppercaseLetters = fmt.Errorf("The password need uppercase letters")
+	ErrPasswordLowercaseLetters = fmt.Errorf("The password need lowercase letters")
 )
