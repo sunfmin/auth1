@@ -57,11 +57,7 @@ var TestCfg = &api.BootConfig{
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccessKeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 	JwtTokenConfig:                      &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000},
-	MinimumLength:                          8,
-	RequireNumber:                       true,
-	RequireSpecialCharacter:             true,
-	RequireUppercaseLetters:             true,
-	RequireLowercaseLetters:             true,
+	PasswordConfig:                      &api.PasswordConfig{MinimumLength: 8, RequireNumber: true, RequireSpecialCharacter: true, RequireUppercaseLetters: true, RequireLowercaseLetters: true},
 }
 
 var userMutationCases = []GraphqlCase{
@@ -110,6 +106,228 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
+	},{
+		name:       "SignUp password requires numbers",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "Test@abcdefg",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
+	},{
+		name:       "SignUp password is empty",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordEmpty.Error(),
+	},{
+		name:       "SignUp password is too short",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "1",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordTooShort.Error(),
+	},{
+		name:       "SignUp password need special character",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "Test12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordSpecialCharacter.Error(),
+	},{
+		name:       "SignUp password need special uppercase letters",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "test@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordUppercaseLetters.Error(),
+	},{
+		name:       "SignUp password need special lowercase letters",
+		fixture:    nil,
+		bootConfig: TestCfg,
+		query: `
+			mutation ($input: SignUpInput!) {
+				SignUp(input: $input) {
+					CodeDeliveryDetails{
+						AttributeName,
+						DeliveryMedium,
+						Destination
+					  },
+				   UserConfirmed,
+	                  UserSub
+				}
+			}
+			`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.SignUpInput{
+					Username: "test",
+					UserAttributes: []*api.AttributeType{
+						{
+							Name:  "email",
+							Value: "test@test.com",
+						},
+						{
+							Name:  "phone_number",
+							Value: "test",
+						},
+					},
+					Password: "TEST@12345678",
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordLowercaseLetters.Error(),
 	}, {
 		name:       "SignUp verification code sending failed",
 		fixture:    nil,
@@ -231,7 +449,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: " + api.ErrWrongverificationcode.Error(),
+		expectedError: "graphql: " + api.ErrWrongVerificationCode.Error(),
 	}, {
 		name: "ConfirmSignUp verification code timeout",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -578,7 +796,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: " + api.ErrWrongverificationcode.Error(),
+		expectedError: "graphql: " + api.ErrWrongVerificationCode.Error(),
 	}, {
 		name: "ConfirmForgotPassword verification code timeout",
 		fixture: func(ctx context.Context, client *ent.Client) {

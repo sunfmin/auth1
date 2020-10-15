@@ -15,11 +15,7 @@ type BootConfig struct {
 	EmailConfig                         *EmailConfig
 	PhoneConfig                         *PhoneConfig
 	JwtTokenConfig                      *JwtTokenConfig
-	MinimumLength                       int
-	RequireNumber                       bool
-	RequireSpecialCharacter             bool
-	RequireUppercaseLetters             bool
-	RequireLowercaseLetters             bool
+	PasswordConfig                      *PasswordConfig
 }
 
 type EmailConfig struct {
@@ -41,4 +37,12 @@ type JwtTokenConfig struct {
 	JwtExpireSecond             int
 	RefreshTokenJwtSecretKey    string
 	RefreshTokenJwtExpireSecond int
+}
+
+type PasswordConfig struct {
+	MinimumLength           int
+	RequireNumber           bool
+	RequireSpecialCharacter bool
+	RequireUppercaseLetters bool
+	RequireLowercaseLetters bool
 }
