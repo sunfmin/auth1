@@ -5,7 +5,7 @@ import "fmt"
 var (
 	ErrVerificationCode = fmt.Errorf("verification code sending failed")
 	ErrAccountNotExist = fmt.Errorf("Account does not exist")
-	ErrWrongverificationcode = fmt.Errorf("Wrong verification code") 
+	ErrWrongverificationcode = fmt.Errorf("Wrong verification code")
 	ErrAuthFlowIsNil = fmt.Errorf("AuthFlow is nil") 
 	ErrUnknownAuthFlow = fmt.Errorf("Unknown AuthFlow")
 	ErrUserNotActivated = fmt.Errorf("User is not activated") 
