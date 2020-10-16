@@ -35,13 +35,13 @@ const (
 func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 
 	if config.SendMailFunc == nil {
-		config.SendMailFunc = SendMail
+		config.SendMailFunc = defaultSendMail
 	}
 	if config.SendMsgFunc == nil {
-		config.SendMsgFunc = SendMsg
+		config.SendMsgFunc = defaultSendMsg
 	}
 	if config.CreateAccessTokenFunc == nil {
-		config.CreateAccessTokenFunc = CreateAccessToken
+		config.CreateAccessTokenFunc = createAccessToken
 	}
 	if config.JwtTokenConfig == nil {
 		config.JwtTokenConfig = &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}
@@ -64,51 +64,54 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	r = &Resolver{EntClient: entClient, Config: config}
 	return
 }
-func VerifyPwd(Password string, PassowrdConfig *api.PasswordConfig) (err error) {
+
+func VerifyPwd(password string, passwordConfig *api.PasswordConfig) (err error) {
 	num := `[0-9]{1}`
 	a_z := `[a-z]{1}`
 	A_Z := `[A-Z]{1}`
 	symbol := `[!@#~$%^&*()+|_]{1}`
-	if Password == "" {
+	if password == "" {
 		err = api.ErrPasswordEmpty
 		return
 	}
-	if len(Password) < PassowrdConfig.MinimumLength {
+	if len(password) < passwordConfig.MinimumLength {
 		err = api.ErrPasswordTooShort
 		return
 	}
-	if PassowrdConfig.RequireNumber {
-		if b, err := regexp.MatchString(num, Password); !b || err != nil {
+	if passwordConfig.RequireNumber {
+		if b, err := regexp.MatchString(num, password); !b || err != nil {
 			err = api.ErrPasswordNumber
 			return err
 		}
 	}
-	if PassowrdConfig.RequireSpecialCharacter {
-		if b, err := regexp.MatchString(symbol, Password); !b || err != nil {
+	if passwordConfig.RequireSpecialCharacter {
+		if b, err := regexp.MatchString(symbol, password); !b || err != nil {
 			err = api.ErrPasswordSpecialCharacter
 			return err
 		}
 	}
-	if PassowrdConfig.RequireUppercaseLetters {
-		if b, err := regexp.MatchString(A_Z, Password); !b || err != nil {
+	if passwordConfig.RequireUppercaseLetters {
+		if b, err := regexp.MatchString(A_Z, password); !b || err != nil {
 			err = api.ErrPasswordUppercaseLetters
 			return err
 		}
 	}
-	if PassowrdConfig.RequireLowercaseLetters {
-		if b, err := regexp.MatchString(a_z, Password); !b || err != nil {
+	if passwordConfig.RequireLowercaseLetters {
+		if b, err := regexp.MatchString(a_z, password); !b || err != nil {
 			err = api.ErrPasswordLowercaseLetters
 			return err
 		}
 	}
 	return nil
 }
-func NowTime() string {
+
+func nowTime() string {
 	timeUnix := time.Now().Unix()
 	formatTimeStr := time.Unix(timeUnix, 0).Format(timeLayout)
 	return formatTimeStr
 }
-func TimeSub(input string) (err error) {
+
+func timeSub(input string) (err error) {
 	local, _ := time.LoadLocation("Local")
 	theTime, _ := time.ParseInLocation(timeLayout, input, local)
 	TimeNow := time.Now()
@@ -119,12 +122,14 @@ func TimeSub(input string) (err error) {
 	}
 	return
 }
-func VerificationCode() string {
+
+func verificationCode() string {
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	code := fmt.Sprintf("%06v", rnd.Int31n(1000000))
 	return code
 }
-func SendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
+
+func defaultSendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	mailTo := []string{stuEmail}
 	port, _ := strconv.Atoi(EmailConfig.Port)
 
@@ -141,7 +146,8 @@ func SendMail(EmailConfig *api.EmailConfig, stuEmail string, subject string, bod
 	}
 	return
 }
-func SendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
+
+func defaultSendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
 	client, err := dysmsapi.NewClientWithAccessKey("cn-hangzhou", PhoneConfig.AccessKeyId, PhoneConfig.AccessSecret)
 	request := dysmsapi.CreateSendSmsRequest()
 	request.Scheme = "https"
@@ -160,7 +166,8 @@ func SendMsg(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) 
 	}
 	return
 }
-func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
+
+func createAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
@@ -168,7 +175,8 @@ func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string,
 
 	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
-func CreateIdToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
+
+func createIdToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"ID":  id,
@@ -177,7 +185,8 @@ func CreateIdToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error
 
 	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
-func CreateRefreshToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
+
+func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": id,
@@ -186,7 +195,8 @@ func CreateRefreshToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, 
 
 	return token.SignedString([]byte(JwtTokenConfig.RefreshTokenJwtSecretKey))
 }
-func ParseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims, error) {
+
+func parseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims, error) {
 	fn := func(token *jwt.Token) (interface{}, error) {
 		return []byte(JwtTokenConfig.JwtSecretKey), nil
 	}
@@ -197,13 +207,14 @@ func ParseJwtToken(JwtTokenConfig *api.JwtTokenConfig, s string) (jwt.MapClaims,
 	finToken := result.Claims.(jwt.MapClaims)
 	return finToken, nil
 }
+
 func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (output *api.User, err error) {
 	var (
 		email       string
 		phoneNumber string
 	)
 	id := uuid.New()
-	code := VerificationCode()
+	code := verificationCode()
 	err = VerifyPwd(input.Password, r.Config.PasswordConfig)
 	if err != nil {
 		return
@@ -245,7 +256,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 			SetConfirmationCodeHash(string(codeHash)).
 			SetUserAttributes(input.UserAttributes).
 			SetActiveState(0).
-			SetCodeTime(NowTime()).
+			SetCodeTime(nowTime()).
 			SetTokenState(0).
 			Save(ctx)
 		if err != nil {
@@ -275,7 +286,7 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 		SetConfirmationCodeHash(string(codeHash)).
 		SetUserAttributes(input.UserAttributes).
 		SetActiveState(0).
-		SetCodeTime(NowTime()).
+		SetCodeTime(nowTime()).
 		SetTokenState(0).
 		Save(ctx)
 	if err != nil {
@@ -288,13 +299,14 @@ func (r *mutationResolver) SignUp(ctx context.Context, input api.SignUpInput) (o
 	output = &api.User{CodeDeliveryDetails: &api.CodeDeliveryDetails{AttributeName: PhoneNumberAttributeName, DeliveryMedium: "PHONE_NUMBER", Destination: masker.Mobile(phoneNumber)}, UserConfirmed: false, UserSub: id.String()}
 	return
 }
+
 func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmSignUpInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
 		err = api.ErrAccountNotExist
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = timeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
@@ -310,6 +322,7 @@ func (r *mutationResolver) ConfirmSignUp(ctx context.Context, input api.ConfirmS
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
+
 func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateAuthInput) (output *api.AuthenticationResult, err error) {
 	if input.AuthFlow == "" {
 		err = api.ErrAuthFlowIsNil
@@ -339,9 +352,9 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
-		Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
+		AccessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
+		Idtoken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
 		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
@@ -364,9 +377,9 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-		AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
-		Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
+		AccessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
+		Idtoken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
+		RefreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
 		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
 		return output, nil
 	}
@@ -388,21 +401,24 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 	if err != nil {
 		return
 	}
-	AccessToken, err := CreateAccessToken(r.Config.JwtTokenConfig, u.Username)
-	Idtoken, err := CreateIdToken(r.Config.JwtTokenConfig, u.ID.String())
-	RefreshToken, err := CreateRefreshToken(r.Config.JwtTokenConfig, u.Username)
-	output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: Idtoken, RefreshToken: RefreshToken, TokenType: "Bearer"}
+
+	accessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
+	idToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
+	refreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
+	output = &api.AuthenticationResult{AccessToken: accessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: idToken, RefreshToken: refreshToken, TokenType: "Bearer"}
 	return
 }
+
 func (r *queryResolver) GetUser(ctx context.Context, accessToken string) ([]*api.User, error) {
 	panic("not implemented")
 }
+
 func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangePasswordInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = api.ErrAccessTokenNil
 		return
 	}
-	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
+	result, err := parseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		err = api.ErrParseJwtTokenFailed
 		return
@@ -413,7 +429,7 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 		return
 	}
 	if u.TokenState == 0 {
-		err = api.ErrTokeInvalid
+		err = api.ErrTokenInvalid
 		return
 	}
 	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(input.PreviousPassword))
@@ -441,8 +457,9 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
+
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
-	code := VerificationCode()
+	code := verificationCode()
 	codehash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrCodeHash
@@ -458,7 +475,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 			err = api.ErrVerificationCode
 			return nil, err
 		}
-		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(NowTime()).Save(ctx)
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -473,7 +490,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		err = api.ErrVerificationCode
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(NowTime()).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
 	if err != nil {
 		return
 	}
@@ -481,8 +498,9 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 	return
 
 }
+
 func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
-	code := VerificationCode()
+	code := verificationCode()
 	codehash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrCodeHash
@@ -498,7 +516,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 			err := api.ErrVerificationCode
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
-		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(NowTime()).Save(ctx)
+		_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
 		if err != nil {
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
@@ -514,7 +532,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 		err = api.ErrVerificationCode
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(NowTime()).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(input.Username)).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
 	if err != nil {
 		return
 	}
@@ -522,13 +540,14 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 	return
 
 }
+
 func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.ConfirmForgotPasswordInput) (output *api.ConfirmOutput, err error) {
 	u, err := r.EntClient.User.Query().Where(user.Username(input.Username)).Only(ctx)
 	if err != nil {
 		err = api.ErrAccountNotExist
 		return
 	}
-	err = TimeSub(u.CodeTime)
+	err = timeSub(u.CodeTime)
 	if err != nil {
 		return
 	}
@@ -553,12 +572,13 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	output = &api.ConfirmOutput{ConfirmStatus: true}
 	return
 }
+
 func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSignOutInput) (output *api.ConfirmOutput, err error) {
 	if input.AccessToken == "" {
 		err = api.ErrAccessTokenNil
 		return
 	}
-	result, err := ParseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
+	result, err := parseJwtToken(r.Config.JwtTokenConfig, input.AccessToken)
 	if err != nil {
 		err = api.ErrParseJwtTokenFailed
 		return
@@ -569,7 +589,7 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 		return
 	}
 	if u.TokenState == 0 {
-		err = api.ErrTokeInvalid
+		err = api.ErrTokenInvalid
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(result["Username"].(string))).SetTokenState(0).Save(ctx)
