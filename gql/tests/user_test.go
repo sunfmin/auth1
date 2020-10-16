@@ -807,7 +807,7 @@ var userMutationCases = []GraphqlCase{
 				},
 			},
 		},
-		expectedError: "graphql: " + api.ErrTokeInvalid.Error(),
+		expectedError: "graphql: " + api.ErrTokenInvalid.Error(),
 	}, {
 		name:       "ChangePassword accesstoken is nil",
 		fixture:    nil,
