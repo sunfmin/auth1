@@ -53,6 +53,7 @@ var TestCfg = &api.BootConfig{
 	AllowSignInWithVerifiedEmailAddress: true,
 	AllowSignInWithVerifiedPhoneNumber:  false,
 	AllowSignInWithPreferredUsername:    false,
+	CaseSensitive:                       false,
 	SendMailFunc:                        SendMailTest,
 	SendMsgFunc:                         SendMsgTest,
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
@@ -145,7 +146,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
 	}, {
-		name:       "SignUp password need number",
+		name:       "SignUp password empty",
 		fixture:    nil,
 		bootConfig: TestCfg,
 		query: `

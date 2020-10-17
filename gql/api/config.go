@@ -8,6 +8,7 @@ type BootConfig struct {
 	AllowSignInWithVerifiedEmailAddress bool
 	AllowSignInWithVerifiedPhoneNumber  bool
 	AllowSignInWithPreferredUsername    bool
+	CaseSensitive                       bool
 	PreSignUpFunc                       func(ctx context.Context, input SignUpInput) error
 	CreateAccessTokenFunc               func(jwtTokenConfig *JwtTokenConfig, name string) (string, error)
 	SendMailFunc                        func(emailConfig *EmailConfig, email string, subject string, body string) (err error)
