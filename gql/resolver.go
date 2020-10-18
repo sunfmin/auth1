@@ -34,7 +34,7 @@ const (
 )
 
 func UserNameCaseSensitive(r *mutationResolver, userName string) string {
-	if r.Config.CaseSensitive {
+	if r.Config.UsernameCaseSensitive {
 		return userName
 	}
 	return strings.ToLower(userName)
