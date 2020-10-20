@@ -53,7 +53,7 @@ var TestCfg = &api.BootConfig{
 	AllowSignInWithVerifiedEmailAddress: true,
 	AllowSignInWithVerifiedPhoneNumber:  false,
 	AllowSignInWithPreferredUsername:    false,
-	CaseSensitive:                       false,
+	UsernameCaseSensitive:               false,
 	SendMailFunc:                        SendMailTest,
 	SendMsgFunc:                         SendMsgTest,
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
