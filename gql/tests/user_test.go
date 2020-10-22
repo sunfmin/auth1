@@ -53,6 +53,7 @@ var TestCfg = &api.BootConfig{
 	AllowSignInWithVerifiedEmailAddress: true,
 	AllowSignInWithVerifiedPhoneNumber:  false,
 	AllowSignInWithPreferredUsername:    false,
+	UsernameCaseSensitive:               false,
 	SendMailFunc:                        SendMailTest,
 	SendMsgFunc:                         SendMsgTest,
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
@@ -145,7 +146,7 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrPasswordNumber.Error(),
 	}, {
-		name:       "SignUp password need number",
+		name:       "SignUp password empty",
 		fixture:    nil,
 		bootConfig: TestCfg,
 		query: `
@@ -1407,9 +1408,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test",
+						"Password": "password",
 					},
 				},
 			},
@@ -1447,9 +1448,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1475,9 +1476,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1503,9 +1504,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "Unknown_AuthFlow",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1531,9 +1532,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1568,9 +1569,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "wrong_password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "wrong_password",
 					},
 				},
 			},

@@ -57,8 +57,9 @@ type AuthenticationResult {
     TokenType: String! 
 }
 input AuthParameters{
-    Username: String!
-    Password: String!
+    Username: String
+    Password: String
+    RefreshToken: String
 }
 type User {
     CodeDeliveryDetails: CodeDeliveryDetails
