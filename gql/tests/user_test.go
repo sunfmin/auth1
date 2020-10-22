@@ -1408,9 +1408,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test",
+						"Password": "password",
 					},
 				},
 			},
@@ -1448,9 +1448,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1476,9 +1476,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1504,9 +1504,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "Unknown_AuthFlow",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1532,9 +1532,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "password",
 					},
 				},
 			},
@@ -1569,9 +1569,9 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow: "USER_PASSWORD_AUTH",
-					AuthParameters: &api.AuthParameters{
-						Username: "test_error",
-						Password: "wrong_password",
+					AuthParameters: map[string]interface{}{
+						"Username": "test_error",
+						"Password": "wrong_password",
 					},
 				},
 			},

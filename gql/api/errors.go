@@ -24,4 +24,7 @@ var (
 	ErrPasswordSpecialCharacter = fmt.Errorf("the password need special character")
 	ErrPasswordUppercaseLetters = fmt.Errorf("the password need uppercase letters")
 	ErrPasswordLowercaseLetters = fmt.Errorf("the password need lowercase letters")
+	ErrUsernameIsNil            = fmt.Errorf("username is nil")
+	ErrPasswordIsNil            = fmt.Errorf("password is nil")
+	ErrRefreshTokenIsNil        = fmt.Errorf("refreshtoken is nil")
 )

@@ -12,3 +12,6 @@ model:
 resolver:
   filename: resolver.go
   type: Resolver
+models:
+  AuthParameters:
+    model: "map[string]interface{}"
