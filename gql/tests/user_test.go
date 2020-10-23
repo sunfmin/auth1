@@ -29,7 +29,7 @@ func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err err
 	return nil
 }
 
-func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {		
+func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),

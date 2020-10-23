@@ -36,8 +36,8 @@ const (
 func UserNameCaseSensitive(r *mutationResolver, userName string) string {
 	if r.Config.UsernameCaseSensitive {
 		return userName
-		}
-		return strings.ToLower(userName)
+	}
+	return strings.ToLower(userName)
 }
 
 func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
@@ -457,7 +457,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		err = api.ErrParseJwtTokenFailed
 		return
 	}
-	u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r,result["Username"].(string)))).Only(ctx)
+	u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r, result["Username"].(string)))).Only(ctx)
 	if err != nil {
 		err = api.ErrAccountNotExist
 		return
