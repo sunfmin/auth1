@@ -17,13 +17,13 @@ const defaultPort = "8080"
 
 var vcode = ""
 
-func SendMailTest(stuEmail string, subject string, body string) (err error) {
+func sendMailTest(stuEmail string, subject string, body string) (err error) {
 	vcode = body
 	fmt.Print("send success")
 	fmt.Print(vcode)
 	return nil
 }
-func SendMsgTest(tel string, code string) (err error) {
+func sendMsgTest(tel string, code string) (err error) {
 	vcode = code
 	fmt.Print("send success")
 	fmt.Print(vcode)

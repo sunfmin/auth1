@@ -193,10 +193,10 @@ func createIdToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error
 	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
 
-func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, id string) (string, error) {
+func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"Username": id,
+		"Username": name,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.RefreshTokenJwtExpireSecond)).Unix(),
 	})
 
@@ -343,16 +343,12 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		err = api.ErrAuthFlowIsNil
 		return
 	}
-<<<<<<< HEAD
 	if input.AuthFlow != "USER_PASSWORD_AUTH" && input.AuthFlow != "EMAIL_PASSWORD_AUTH" && input.AuthFlow != "PHONE_NUMBER_PASSWORD_AUTH" && input.AuthFlow != "REFRESH_TOKEN_AUTH" {
-=======
-	if input.AuthFlow != "USER_PASSWORD_AUTH" && input.AuthFlow != "EMAIL_PASSWORD_AUTH" && input.AuthFlow != "PHONENUMBER_PASSWORD_AUTH" {
->>>>>>> 6ed0423b7af9158f5879a008d61a73ac709f47ef
 		err = api.ErrUnknownAuthFlow
 		return
+
 	}
 	if input.AuthFlow == "USER_PASSWORD_AUTH" {
-<<<<<<< HEAD
 		if input.AuthParameters["Username"] == nil {
 			err = api.ErrUsernameIsNil
 			return
@@ -362,9 +358,6 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 			return
 		}
 		u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r, input.AuthParameters["Username"].(string)))).Only(ctx)
-=======
-		u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r, input.AuthParameters.Username))).Only(ctx)
->>>>>>> 6ed0423b7af9158f5879a008d61a73ac709f47ef
 		if err != nil {
 			err = api.ErrAccountNotExist
 			return nil, err
@@ -378,7 +371,6 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 			err = api.ErrWrongPassword
 			return nil, err
 		}
-<<<<<<< HEAD
 		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.AuthParameters["Username"].(string)))).SetTokenState(1).Save(ctx)
 		if err != nil {
 			return nil, err
@@ -387,16 +379,6 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		idToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
 		refreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
 		output = &api.AuthenticationResult{AccessToken: accessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: idToken, RefreshToken: refreshToken, TokenType: "Bearer"}
-=======
-		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.AuthParameters.Username))).SetTokenState(1).Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-		AccessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
-		IdToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: IdToken, RefreshToken: RefreshToken, TokenType: "Bearer"}
->>>>>>> 6ed0423b7af9158f5879a008d61a73ac709f47ef
 		return output, nil
 	}
 	if input.AuthFlow == "EMAIL_PASSWORD_AUTH" {
@@ -426,17 +408,10 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-<<<<<<< HEAD
 		accessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
 		idToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
 		refreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
 		output = &api.AuthenticationResult{AccessToken: accessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: idToken, RefreshToken: refreshToken, TokenType: "Bearer"}
-=======
-		AccessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
-		IdToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
-		RefreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
-		output = &api.AuthenticationResult{AccessToken: AccessToken, ExpiresIn: r.Config.JwtTokenConfig.JwtExpireSecond, IDToken: IdToken, RefreshToken: RefreshToken, TokenType: "Bearer"}
->>>>>>> 6ed0423b7af9158f5879a008d61a73ac709f47ef
 		return output, nil
 	}
 	if input.AuthFlow == "PHONE_NUMBER_PASSWORD_AUTH" {
@@ -466,7 +441,6 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		if err != nil {
 			return nil, err
 		}
-
 		accessToken, err := createAccessToken(r.Config.JwtTokenConfig, u.Username)
 		idToken, err := createIdToken(r.Config.JwtTokenConfig, u.ID.String())
 		refreshToken, err := createRefreshToken(r.Config.JwtTokenConfig, u.Username)
@@ -482,7 +456,7 @@ func (r *mutationResolver) InitiateAuth(ctx context.Context, input api.InitiateA
 		err = api.ErrParseJwtTokenFailed
 		return
 	}
-	u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r,result["Username"].(string)))).Only(ctx)
+	u, err := r.EntClient.User.Query().Where(user.Username(UserNameCaseSensitive(r, result["Username"].(string)))).Only(ctx)
 	if err != nil {
 		err = api.ErrAccountNotExist
 		return
@@ -538,12 +512,12 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 	if err != nil {
 		return
 	}
-	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.ProposedPassword), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrPasswordHash
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(result["Username"].(string))).SetPasswordHash(string(passwordhash)).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(result["Username"].(string))).SetPasswordHash(string(passwordHash)).Save(ctx)
 	if err != nil {
 		return
 	}
@@ -553,7 +527,7 @@ func (r *mutationResolver) ChangePassword(ctx context.Context, input api.ChangeP
 
 func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotPasswordInput) (output *api.CodeDeliveryDetails, err error) {
 	code := verificationCode()
-	code_hash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	codeHash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrCodeHash
 		return
@@ -568,7 +542,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 			err = api.ErrVerificationCode
 			return nil, err
 		}
-		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(nowTime()).Save(ctx)
+		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codeHash)).SetCodeTime(nowTime()).Save(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -583,7 +557,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 		err = api.ErrVerificationCode
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(code_hash)).SetCodeTime(nowTime()).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codeHash)).SetCodeTime(nowTime()).Save(ctx)
 	if err != nil {
 		return
 	}
@@ -594,7 +568,7 @@ func (r *mutationResolver) ForgotPassword(ctx context.Context, input api.ForgotP
 
 func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api.ResendConfirmationCodeInput) (output *api.ConfirmOutput, err error) {
 	code := verificationCode()
-	codehash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
+	codeHash, err := bcrypt.GenerateFromPassword([]byte(code), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrCodeHash
 		return
@@ -609,7 +583,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 			err := api.ErrVerificationCode
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
-		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
+		_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codeHash)).SetCodeTime(nowTime()).Save(ctx)
 		if err != nil {
 			return &api.ConfirmOutput{ConfirmStatus: false}, err
 		}
@@ -625,7 +599,7 @@ func (r *mutationResolver) ResendConfirmationCode(ctx context.Context, input api
 		err = api.ErrVerificationCode
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codehash)).SetCodeTime(nowTime()).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetConfirmationCodeHash(string(codeHash)).SetCodeTime(nowTime()).Save(ctx)
 	if err != nil {
 		return
 	}
@@ -652,12 +626,12 @@ func (r *mutationResolver) ConfirmForgotPassword(ctx context.Context, input api.
 	if err != nil {
 		return
 	}
-	passwordhash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		err = api.ErrPasswordHash
 		return
 	}
-	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetPasswordHash(string(passwordhash)).Save(ctx)
+	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, input.Username))).SetPasswordHash(string(passwordHash)).Save(ctx)
 	if err != nil {
 		return
 	}
