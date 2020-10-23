@@ -29,5 +29,8 @@ jobs:
             dep ensure
         fi
 
+    - name: Generate
+      run: ./generate.sh
+
     - name: Test
       run: go test -v ./gql/...
