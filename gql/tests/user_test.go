@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
+func sendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string, body string) (err error) {
 	if stuEmail == "test_error" {
 		err := api.ErrVerificationCode
 		return err
@@ -20,7 +20,7 @@ func SendMailTest(EmailConfig *api.EmailConfig, stuEmail string, subject string,
 	fmt.Printf("send success")
 	return nil
 }
-func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
+func sendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err error) {
 	if tel == "test_error" {
 		err := api.ErrVerificationCode
 		return err
@@ -29,13 +29,22 @@ func SendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err err
 	return nil
 }
 
-func CreateAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
+func createAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
 	})
 
 	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
+}
+func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"Username": name,
+		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.RefreshTokenJwtExpireSecond)).Unix(),
+	})
+
+	return token.SignedString([]byte(JwtTokenConfig.RefreshTokenJwtSecretKey))
 }
 
 func NowTime() string {
@@ -44,18 +53,20 @@ func NowTime() string {
 	return formatTimeStr
 }
 
-var TestAccessToken, _ = CreateAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
-var FailedAccessToken, _ = CreateAccessToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
-var code_hash, _ = bcrypt.GenerateFromPassword([]byte("111111"), bcrypt.DefaultCost)
-var password_hash, _ = bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
+var testAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var failedAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var testRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var failedRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var codeHash, _ = bcrypt.GenerateFromPassword([]byte("111111"), bcrypt.DefaultCost)
+var passwordHash, _ = bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 
 var TestCfg = &api.BootConfig{
 	AllowSignInWithVerifiedEmailAddress: true,
 	AllowSignInWithVerifiedPhoneNumber:  false,
 	AllowSignInWithPreferredUsername:    false,
 	UsernameCaseSensitive:               false,
-	SendMailFunc:                        SendMailTest,
-	SendMsgFunc:                         SendMsgTest,
+	SendMailFunc:                        sendMailTest,
+	SendMsgFunc:                         sendMsgTest,
 	EmailConfig:                         &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"},
 	PhoneConfig:                         &api.PhoneConfig{AccessKeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"},
 	JwtTokenConfig:                      &api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000},
@@ -374,7 +385,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test_error").
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -420,7 +431,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -476,7 +487,7 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
 				SetID(uuid.New()).
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SaveX(ctx)
 		},
@@ -534,7 +545,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -551,7 +562,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "Test@12345678",
 				},
@@ -569,7 +580,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -586,7 +597,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      FailedAccessToken,
+					AccessToken:      failedAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "Test@12345678",
 				},
@@ -600,7 +611,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -617,7 +628,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "Test@12",
 				},
@@ -631,7 +642,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -648,7 +659,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "",
 				},
@@ -662,7 +673,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -679,7 +690,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "Test1235678",
 				},
@@ -693,7 +704,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -710,7 +721,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "Test@qwweerrrtt",
 				},
@@ -724,7 +735,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -741,7 +752,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "test@12345678",
 				},
@@ -755,7 +766,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetTokenState(1).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -772,7 +783,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "TEST@12345678",
 				},
@@ -786,7 +797,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
@@ -802,7 +813,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "new_password",
 				},
@@ -846,7 +857,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "new_password",
 				},
@@ -861,7 +872,7 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetTokenState(1).
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
@@ -877,7 +888,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "wrong_password",
 					ProposedPassword: "new_password",
 				},
@@ -892,7 +903,7 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetTokenState(1).
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
@@ -908,7 +919,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.ChangePasswordInput{
-					AccessToken:      TestAccessToken,
+					AccessToken:      testAccessToken,
 					PreviousPassword: "password",
 					ProposedPassword: "password",
 				},
@@ -1004,7 +1015,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1039,7 +1050,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1070,7 +1081,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1101,7 +1112,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1132,7 +1143,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1163,7 +1174,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1194,7 +1205,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1247,7 +1258,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test_error").
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetCodeTime(NowTime()).
 				SetID(uuid.New()).
 				SaveX(ctx)
@@ -1278,7 +1289,7 @@ var userMutationCases = []GraphqlCase{
 				SetUsername("test_error").
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
-				SetConfirmationCodeHash(string(code_hash)).
+				SetConfirmationCodeHash(string(codeHash)).
 				SetID(uuid.New()).
 				SaveX(ctx)
 		},
@@ -1380,14 +1391,14 @@ var userMutationCases = []GraphqlCase{
 		},
 		expectedError: "graphql: " + api.ErrAccountNotExist.Error(),
 	}, {
-		name: "InitiateAuth normal",
+		name: "InitiateAuth USER_PASSWORD_AUTH normal",
 		fixture: func(ctx context.Context, client *ent.Client) {
 			client.User.Create().
 				SetUsername("test").
 				SetPhoneNumber("test").
 				SetEmail("test").
 				SetID(uuid.New()).
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetActiveState(1).
 				SaveX(ctx)
 		},
@@ -1420,6 +1431,192 @@ var userMutationCases = []GraphqlCase{
 				ExpiresIn: 3600,
 			},
 		},
+	}, {
+		name: "InitiateAuth REFRESH_TOKEN_AUTH normal",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(passwordHash)).
+				SetTokenState(1).
+				SetActiveState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "REFRESH_TOKEN_AUTH",
+					AuthParameters: map[string]interface{}{
+						"RefreshToken": testRefreshToken,
+					},
+				},
+			},
+		},
+		expected: &api.Data{
+			InitiateAuth: &api.AuthenticationResult{
+				ExpiresIn: 3600,
+			},
+		},
+	}, {
+		name: "InitiateAuth username is nil",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetID(uuid.New()).
+				SetPasswordHash(string(passwordHash)).
+				SetActiveState(1).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "USER_PASSWORD_AUTH",
+					AuthParameters: map[string]interface{}{
+						"Password": "password",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrUsernameIsNil.Error(),
+	}, {
+		name: "InitiateAuth password is nil",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetID(uuid.New()).
+				SetPasswordHash(string(passwordHash)).
+				SetActiveState(1).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow: "USER_PASSWORD_AUTH",
+					AuthParameters: map[string]interface{}{
+						"Username": "test",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrPasswordIsNil.Error(),
+	}, {
+		name: "InitiateAuth refreshtoken is nil",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(passwordHash)).
+				SetTokenState(1).
+				SetActiveState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow:       "REFRESH_TOKEN_AUTH",
+					AuthParameters: map[string]interface{}{
+					},
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrRefreshTokenIsNil.Error(),
+	}, {
+		name: "InitiateAuth parsejwttoken failed",
+		fixture: func(ctx context.Context, client *ent.Client) {
+			client.User.Create().
+				SetUsername("test").
+				SetPhoneNumber("test").
+				SetEmail("test").
+				SetPasswordHash(string(passwordHash)).
+				SetTokenState(1).
+				SetActiveState(1).
+				SetID(uuid.New()).
+				SaveX(ctx)
+		},
+		bootConfig: TestCfg,
+		query: `
+		mutation InitiateAuth($input:InitiateAuthInput!){
+		  InitiateAuth(input:$input){
+			AccessToken,
+			ExpiresIn,
+			IdToken,
+			RefreshToken,
+			TokenType
+          }
+		}
+		`,
+		vars: []Var{
+			{
+				name: "input",
+				val: api.InitiateAuthInput{
+					AuthFlow:       "REFRESH_TOKEN_AUTH",
+					AuthParameters: map[string]interface{}{
+						"RefreshToken": "failed",
+					},
+				},
+			},
+		},
+		expectedError: "graphql: " + api.ErrParseJwtTokenFailed.Error(),
 	}, {
 		name: "InitiateAuth user is not activated",
 		fixture: func(ctx context.Context, client *ent.Client) {
@@ -1548,7 +1745,7 @@ var userMutationCases = []GraphqlCase{
 				SetPhoneNumber("test_error").
 				SetEmail("test_error").
 				SetID(uuid.New()).
-				SetPasswordHash(string(password_hash)).
+				SetPasswordHash(string(passwordHash)).
 				SetActiveState(1).
 				SaveX(ctx)
 		},
@@ -1600,7 +1797,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.GlobalSignOutInput{
-					AccessToken: TestAccessToken,
+					AccessToken: testAccessToken,
 				},
 			},
 		},
@@ -1632,7 +1829,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.GlobalSignOutInput{
-					AccessToken: FailedAccessToken,
+					AccessToken: failedAccessToken,
 				},
 			},
 		},
@@ -1672,7 +1869,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.GlobalSignOutInput{
-					AccessToken: TestAccessToken,
+					AccessToken: testAccessToken,
 				},
 			},
 		},
