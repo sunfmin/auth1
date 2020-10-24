@@ -37,5 +37,8 @@ jobs:
     - name: Source
       run: source dev_env
       
+    - name: Echo
+      run: echo $DB
+      
     - name: Test
       run: go test -v ./gql/...
