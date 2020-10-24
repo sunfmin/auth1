@@ -27,8 +27,11 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
+    - name: Generate
+      run: ./generate.sh
+      
+    - name: Source
+      run: source dev_env
+      
     - name: Test
-      run: 
-        ./generate.sh
-        source dev_env
-        go test -v ./gql/...
+      run: go test -v ./gql/...
