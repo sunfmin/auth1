@@ -15,7 +15,7 @@ jobs:
         image: postgres
         # Provide the password for postgres
         env:
-          POSTGRES_PASSWORD: postgres
+          POSTGRES_PASSWORD: 123
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -27,6 +27,20 @@ jobs:
           - 5432:5432
 
     steps:
+      - name: Setup PostgreSQL
+        # You may pin to the exact commit or the version.
+        # uses: Harmon758/postgresql-action@0be19fa37850b22cb4c9bbf28a03abbf44abd863
+        uses: Harmon758/postgresql-action@v1.0.0
+        with:
+          # Version of PostgreSQL to use
+          postgresql version: latest # optional, default is latest
+          # POSTGRES_DB - name for the default database that is created
+          postgresql db: auth1_test# optional, default is 
+          # POSTGRES_USER - create the specified user with superuser power
+          postgresql user: auth1# optional, default is 
+          # POSTGRES_PASSWORD - superuser password
+          postgresql password: 123# optional, default is 
+      
       # Downloads a copy of the code in your repository before running CI tests
       - name: Check out repository code
         uses: actions/checkout@v2
