@@ -28,8 +28,8 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
     
-    - name: Connect to PostgreSQL
-      run: node client.js
+    - name: Env
+      run: export DB="host=localhost port=5432 user=auth1 dbname=auth1_test password=123 sslmode=disable"
 
     - name: Generate
       run: ./generate.sh
