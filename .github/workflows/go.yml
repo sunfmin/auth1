@@ -68,5 +68,11 @@ jobs:
     - name: Build
       run: go build -v .
 
+    - name: generate
+      run: ./generate.sh
+      
+    - name: dev_env
+      run: source dev_env
+      
     - name: Test
-      run: go test -v .
+      run: go test -v ./gql/...
