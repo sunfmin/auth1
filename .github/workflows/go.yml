@@ -51,7 +51,7 @@ jobs:
         fi
       
     - name: generate
-      run: generate.sh
+      run: ./generate.sh
       
     - name: dev_env
       run: source dev_env
