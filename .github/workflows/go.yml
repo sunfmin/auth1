@@ -42,7 +42,7 @@ jobs:
       uses: actions/checkout@v2
       
     - name: mkdir 
-      run: mkdir /home/runner/work/github.com/sunfmin
+      run: mkdir -p /home/runner/work/github.com/sunfmin
       
     - name: cp
       run: cp -f /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
