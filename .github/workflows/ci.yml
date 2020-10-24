@@ -36,5 +36,14 @@ jobs:
     - name: Source
       run: source dev_env
       
+    - name: Source
+      run: source dev_env
+      
     - name: Test
+      run: go test -v ./gql/...
+      
+    - name: Source again
+      run: source dev_env
+      
+    - name: Test again
       run: go test -v ./gql/...
