@@ -47,9 +47,6 @@ jobs:
     - name: cp
       run: cp -r /home/runner/work/auth1/auth1 /home/runner/work/auth1/github.com/sunfmin
       
-    - name: cd
-      run: cd /home/runner/work/auth1/github.com/sunfmin/auth1
-      
     - name: Get dependencies
       run: |
         go get -v -t -d ./...
@@ -59,7 +56,7 @@ jobs:
         fi
 
     - name: generate
-      run: ./generate.sh
+      run: cd /home/runner/work/auth1/github.com/sunfmin/auth1 && ./generate.sh
       
     - name: dev_env
       run: source dev_env
