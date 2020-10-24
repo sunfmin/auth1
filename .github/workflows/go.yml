@@ -36,7 +36,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.13
+        go-version: ^1.15.1
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -50,8 +50,11 @@ jobs:
             dep ensure
         fi
 
+    - name: Build
+      run: go build -v .
+      
     - name: generate
-      run: cd gql && go run github.com/99designs/gqlgen
+      run: generate.sh
       
     - name: dev_env
       run: source dev_env
