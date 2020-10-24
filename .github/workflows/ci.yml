@@ -11,8 +11,6 @@ jobs:
           POSTGRES_USER: auth1
           POSTGRES_PASSWORD: 123
           POSTGRES_DB: auth1_test
-          POSTGRES_HOST: localhost
-          POSTGRES_SSLMODE: disable
         ports:
           - 5432:5432
         options: >-
@@ -37,6 +35,7 @@ jobs:
       
     - name: Source
       run: source dev_env
+      shell: bash
       
     - name: Test
       run: go test -v ./gql/...
