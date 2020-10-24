@@ -11,6 +11,7 @@ jobs:
           POSTGRES_USER: auth1
           POSTGRES_PASSWORD: 123
           POSTGRES_DB: auth1_test
+          POSTGRES_HOST: localhost
         ports:
           - 5432:5432
         options: >-
@@ -36,14 +37,5 @@ jobs:
     - name: Source
       run: source dev_env
       
-    - name: Source
-      run: source dev_env
-      
     - name: Test
-      run: go test -v ./gql/...
-      
-    - name: Source again
-      run: source dev_env
-      
-    - name: Test again
       run: go test -v ./gql/...
