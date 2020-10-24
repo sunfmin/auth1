@@ -45,7 +45,7 @@ jobs:
       run: cp -r /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
       
     - name: cd
-      run: cd -r /home/runner/work/github.com/sunfmin
+      run: cd /home/runner/work/github.com/sunfmin
       
     - name: Get dependencies
       run: |
