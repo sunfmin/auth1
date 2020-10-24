@@ -50,6 +50,9 @@ jobs:
         fi
 
     - name: generate
+      run: go env
+
+    - name: generate
       run: ./generate.sh
       
     - name: dev_env
