@@ -42,21 +42,21 @@ jobs:
       uses: actions/checkout@v2
       
     - name: mkdir 
-      run: mkdir -p /home/runner/work/github.com/sunfmin
+      run: mkdir -p /home/runner/go/src/github.com/sunfmin
       
     - name: cp
-      run: cp -r /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
+      run: cp -r /home/runner/work/auth1/auth1 /home/runner/go/src/github.com/sunfmin
       
     - name: Get dependencies
       run: |
-        go get -v -t -d ./...
+        cd  /home/runner/go/src/github.com/sunfmin/auth1 && go get -v -t -d ./...
         if [ -f Gopkg.toml ]; then
             curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
             dep ensure
         fi
 
     - name: generate
-      run: cd /home/runner/work/github.com/sunfmin/auth1 && ./generate.sh
+      run: cd  /home/runner/go/src/github.com/sunfmin/auth1 && ./generate.sh
       
     - name: dev_env
       run: source dev_env
