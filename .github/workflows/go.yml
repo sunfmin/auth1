@@ -45,7 +45,7 @@ jobs:
       run: mkdir -p /home/runner/work/github.com/sunfmin
       
     - name: cp
-      run: cp -f /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
+      run: cp -r /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
       
     - name: cd
       run: cd /home/runner/work/github.com/sunfmin
