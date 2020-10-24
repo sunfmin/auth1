@@ -42,13 +42,13 @@ jobs:
       uses: actions/checkout@v2
       
     - name: mkdir 
-      run: mkdir -p /home/runner/work/github.com/sunfmin
+      run: mkdir -p /home/runner/work/auth1/github.com/sunfmin
       
     - name: cp
       run: cp -r /home/runner/work/auth1/auth1 /home/runner/work/github.com/sunfmin
       
     - name: cd
-      run: cd /home/runner/work/github.com/sunfmin/auth1
+      run: cd /home/runner/work/auth1/github.com/sunfmin/auth1
       
     - name: Get dependencies
       run: |
