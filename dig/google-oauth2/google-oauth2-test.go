@@ -12,7 +12,6 @@ const htmlIndex = `<html><body>
 <a href="/GoogleLogin">Log in with Google</a>
 </body></html>
 `
-
 var endpotin = oauth2.Endpoint{
 	AuthURL:  "https://accounts.google.com/o/oauth2/auth",
 	TokenURL: "https://oauth2.googleapis.com/token",
@@ -53,7 +52,6 @@ func handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Println("state:" + state)
-
 	code := r.FormValue("code")
 	fmt.Println("code:" + code)
 	token, err := googleOauthConfig.Exchange(oauth2.NoContext, code)
