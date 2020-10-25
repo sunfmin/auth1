@@ -60,7 +60,7 @@ jobs:
         fi
         
     - name: generate
-      run: ./generate.sh
+      run: cd  /home/runner/go/src/github.com/sunfmin/auth1 && ./generate.sh
       
     - name: dev_env
       run: source dev_env
