@@ -26,7 +26,6 @@ var googleOauthConfig = &oauth2.Config{
 	Endpoint:     endpotin,
 }
 
-const oauthStateString = "random"
 
 func main() {
 	http.HandleFunc("/", handleMain)
