@@ -38,8 +38,11 @@ jobs:
       with:
         go-version: ^1.15.1
 
+    - name: go mod
+      run: export GO111MODULE=on
+
     - name: env
-      run: go env -w GO111MODULE=on && go env
+      run: go env
       
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
