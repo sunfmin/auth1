@@ -39,14 +39,10 @@ jobs:
         go-version: ^1.15.1
 
     - name: go mod
-      run: go env -w GO111MODULE="on"
+      run: go env -w GO111MODULE="on" && go env -w GOPATH="/home/runner/work/auth1" && go env -w GOMOD="/home/runner/work/auth1/auth1/go.mod"
 
     - name: env
       run: go env
-      
-      
-    - name: src
-      run: mkdir -p /home/runner/go/src/github.com/sunfmin && cp -r /home/runner/work/auth1/auth1 /home/runner/go/src/github.com/sunfmin && cd  /home/runner/go/src/github.com/sunfmin/auth1 && go env
       
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -60,7 +56,7 @@ jobs:
         fi
         
     - name: generate
-      run: cd  /home/runner/go/src/github.com/sunfmin/auth1 && ./generate.sh
+      run: go env && ./generate.sh
       
     - name: dev_env
       run: source dev_env
