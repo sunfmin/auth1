@@ -39,7 +39,7 @@ jobs:
         go-version: ^1.15.1
 
     - name: go mod
-      run: go env -w GO111MODULE="on" && go env -w GOPATH="/home/runner/work/" && rename /home/runner/work/auth1 /home/runner/work/src
+      run: go env -w GO111MODULE="on" && go env -w GOPATH="/home/runner/work/" 
 
     - name: env
       run: go env
@@ -56,7 +56,7 @@ jobs:
         fi
         
     - name: generate
-      run: go env && ./generate.sh
+      run: go env && rename /home/runner/work/auth1 /home/runner/work/src && ./generate.sh
       
     - name: dev_env
       run: source dev_env
