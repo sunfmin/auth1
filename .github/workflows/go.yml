@@ -39,7 +39,7 @@ jobs:
         go-version: ^1.15.1
 
     - name: go mod
-      run: go env -w GO111MODULE="on" && go env -w GOPATH="/home/runner/work/" && mv /home/runner/work/auth1/auth1/ /home/runner/work/src/auth1/
+      run: go env -w GO111MODULE="on" && go env -w GOPATH="/home/runner/work/" && rename /home/runner/work/auth1 /home/runner/work/src
 
     - name: env
       run: go env
