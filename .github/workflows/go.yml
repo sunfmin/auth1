@@ -44,6 +44,10 @@ jobs:
     - name: env
       run: go env
       
+      
+    - name: src
+      run: mkdir -p /home/runner/go/src/github.com/sunfmin && cp -r /home/runner/work/auth1/auth1 /home/runner/go/src/github.com/sunfmin && cd  /home/runner/go/src/github.com/sunfmin/auth1 && go env
+      
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
       
