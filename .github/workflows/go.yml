@@ -39,7 +39,7 @@ jobs:
         go-version: ^1.15.1
 
     - name: go mod
-      run: export GO111MODULE=on
+      run: go env -w GO111MODULE="on"
 
     - name: env
       run: go env
