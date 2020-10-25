@@ -1,51 +1,37 @@
 name: Go
-
-on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
-
+on: [push,pull_request]
 jobs:
-  # Label of the runner job
-  runner-job:
-    # You must use a Linux environment when using service containers or container jobs
+  test:
+    name: Test
     runs-on: ubuntu-latest
-    # Service containers to run with `runner-job`
     services:
-      # Label used to access the service container
       postgres:
-        # Docker Hub image
         image: postgres
-        # Provide the password for postgres
         env:
           POSTGRES_USER: auth1
           POSTGRES_PASSWORD: 123
           POSTGRES_DB: auth1_test
-          POSTGRES_HOST: localhost
-        # Set health checks to wait until postgres has started
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-        ports:
-          # Maps tcp port 5432 on service container to the host
-          - 5432:5432
     steps:
     - name: Set up Go 1.x
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15.1
+        go-version: ^1.15
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-        
-    - name: generate
+
+    - name: Generate
       run: ./generate.sh
       
-    - name: dev_env
-      run: source dev_env
+    - name: Generate again
+      run: ./generate.sh
       
     - name: Test
       run: go test -v ./gql/...
