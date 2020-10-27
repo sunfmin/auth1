@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 )
+
 const htmlIndex = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,14 +13,16 @@ const htmlIndex = `<!DOCTYPE html>
     <title>Title</title>
 </head>
 <body>
-    <a href="https://github.com/login/oauth/authorize?client_id=&redirect_uri=http://localhost:8000/GitHubCallback&scope=user:email">Github 第三方授权登录</a>
+</body>
+<a href="https://github.com/login/oauth/authorize?client_id=&redirect_uri=http://localhost:8080/oauth2/idpresponse&scope=user:email">Github 第三方授权登录</a>
 </body>
 </html>
 `
+
 type Conf struct {
-	ClientId     string 
-	ClientSecret string 
-	RedirectUrl  string 
+	ClientId     string
+	ClientSecret string
+	RedirectUrl  string
 }
 
 var conf = Conf{
@@ -28,11 +31,10 @@ var conf = Conf{
 	RedirectUrl:  "http://localhost:8000/GitHubCallback",
 }
 
-
 type Token struct {
 	AccessToken string `json:"access_token"`
 	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`     
+	Scope       string `json:"scope"`
 }
 
 func Hello(w http.ResponseWriter, r *http.Request) {
@@ -42,13 +44,12 @@ func Hello(w http.ResponseWriter, r *http.Request) {
 func Oauth(w http.ResponseWriter, r *http.Request) {
 
 	var err error
-
 	// 获取 code
 	var code = r.URL.Query().Get("code")
 
 	// 通过 code, 获取 token
-	var tokenAuthUrl = GetTokenAuthUrl(code)
-	var token *Token
+	var tokenAuthUrl = fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", conf.ClientId, conf.ClientSecret, code)
+	var token map[string]interface{}
 	if token, err = GetToken(tokenAuthUrl); err != nil {
 		fmt.Println(err)
 		return
@@ -74,15 +75,7 @@ func Oauth(w http.ResponseWriter, r *http.Request) {
 	}
 
 }
-
-func GetTokenAuthUrl(code string) string {
-	return fmt.Sprintf(
-		"https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s",
-		conf.ClientId, conf.ClientSecret, code,
-	)
-}
-
-func GetToken(url string) (*Token, error) {
+func GetToken(url string) (map[string]interface{}, error) {
 
 	var req *http.Request
 	var err error
@@ -97,24 +90,24 @@ func GetToken(url string) (*Token, error) {
 		return nil, err
 	}
 
-	var token Token
+	var token = make(map[string]interface{})
 	if err = json.NewDecoder(res.Body).Decode(&token); err != nil {
 		return nil, err
 	}
-	return &token, nil
+	return token, nil
 }
 
-func GetUserInfo(token *Token) (map[string]interface{}, error) {
+func GetUserInfo(token map[string]interface{}) (map[string]interface{}, error) {
 
-
-	var userInfoUrl = "https://api.github.com/user"	
+	fmt.Print(token["access_token"])
+	var userInfoUrl = "https://api.github.com/user"
 	var req *http.Request
 	var err error
 	if req, err = http.NewRequest(http.MethodGet, userInfoUrl, nil); err != nil {
 		return nil, err
 	}
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token.AccessToken))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token["access_token"].(string)))
 
 	var client = http.Client{}
 	var res *http.Response
@@ -131,9 +124,9 @@ func GetUserInfo(token *Token) (map[string]interface{}, error) {
 
 func main() {
 	http.HandleFunc("/", Hello)
-	http.HandleFunc("/GitHubCallback", Oauth)
+	http.HandleFunc("/oauth2/idpresponse", Oauth)
 
-	if err := http.ListenAndServe(":8000", nil); err != nil {
+	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Println(err)
 		return
 	}

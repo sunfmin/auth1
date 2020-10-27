@@ -4,8 +4,10 @@ package gql
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,6 +33,7 @@ const (
 	EmailAttributeName       = "email"
 	PhoneNumberAttributeName = "phone_number"
 	timeLayout               = "2006-01-02 15:04:05"
+
 )
 
 func UserNameCaseSensitive(r *mutationResolver, userName string) string {
@@ -70,6 +73,65 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	}
 	r = &Resolver{EntClient: entClient, Config: config}
 	return
+}
+var redirectUri string
+func Authorize(w http.ResponseWriter, r *http.Request) {
+	redirectUri = r.URL.Query().Get("redirect_uri")
+	if r.URL.Query().Get("response_type")=="code"{
+        if r.URL.Query().Get("identity_provider")=="GitHub"{
+			var url = fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:8080/oauth2/idpresponse&scope=%s", r.URL.Query().Get("client_id"), r.URL.Query().Get("scope"))
+            http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+		}
+	}
+
+}
+func Idpresponse(w http.ResponseWriter, r *http.Request) {
+	var code = r.URL.Query().Get("code")
+	r.Header.Set("code",code)
+	http.Redirect(w, r, redirectUri+"?code="+code, http.StatusTemporaryRedirect)
+}
+func getToken(code string) (map[string]interface{}, error) {
+	var tokenAuthUrl = fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s","294f07e8521dce0b96f7", "74370eb312c2074ce01f2ecb2a9e15b6c80f3db5", code,)
+	var req *http.Request
+	var err error
+	if req, err = http.NewRequest(http.MethodPost, tokenAuthUrl, nil); err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/json")
+	var httpClient = http.Client{}
+	var res *http.Response
+	if res, err = httpClient.Do(req); err != nil {
+		return nil, err
+	}
+	var token= make(map[string]interface{})
+	if err = json.NewDecoder(res.Body).Decode(&token); err != nil {
+		return nil, err
+	}
+	return token, nil
+}
+
+func getUserInfo(token map[string]interface{}) (map[string]interface{}, error) {
+
+	var userInfoUrl = "https://api.github.com/user"
+	var req *http.Request
+	var err error
+	if req, err = http.NewRequest(http.MethodGet, userInfoUrl, nil); err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token["access_token"]))
+
+	var client = http.Client{}
+	var res *http.Response
+	if res, err = client.Do(req); err != nil {
+		return nil, err
+	}
+
+	var userInfo = make(map[string]interface{})
+	if err = json.NewDecoder(res.Body).Decode(&userInfo); err != nil {
+		return nil, err
+	}
+	return userInfo, nil
 }
 
 func VerifyPwd(password string, passwordConfig *api.PasswordConfig) (err error) {
