@@ -13,7 +13,6 @@ const htmlIndex = `<!DOCTYPE html>
     <title>Title</title>
 </head>
 <body>
-</body>
 <a href="https://github.com/login/oauth/authorize?client_id=&redirect_uri=http://localhost:8080/oauth2/idpresponse&scope=user:email">Github 第三方授权登录</a>
 </body>
 </html>
