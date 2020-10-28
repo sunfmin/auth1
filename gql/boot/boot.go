@@ -1,16 +1,14 @@
 package boot
 
 import (
-	"log"
-	"net/http"
-	"os"
-
 	_ "github.com/lib/pq"
 	"github.com/sunfmin/auth1/ent"
 	"github.com/sunfmin/auth1/gql"
 	"github.com/sunfmin/auth1/gql/api"
 	"github.com/sunfmin/graphql"
 	"github.com/sunfmin/handlertransport"
+	"log"
+	"net/http"
 )
 
 var _entClient *ent.Client
@@ -21,7 +19,7 @@ func MustGetEntClient() *ent.Client {
 	}
 
 	var err error
-	_entClient, err = ent.Open("postgres", os.Getenv("DB"))
+	_entClient, err = ent.Open("postgres", "host=localhost port=5432 user=auth1 dbname=auth1_test password=123 sslmode=disable")
 
 	if err != nil {
 		panic(err)

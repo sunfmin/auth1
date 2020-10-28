@@ -8,6 +8,7 @@ type BootConfig struct {
 	AllowSignInWithVerifiedEmailAddress bool
 	AllowSignInWithVerifiedPhoneNumber  bool
 	AllowSignInWithPreferredUsername    bool
+	AllowSignInWithGitHubOAuth2         bool
 	UsernameCaseSensitive               bool
 	PreSignUpFunc                       func(ctx context.Context, input SignUpInput) error
 	CreateAccessTokenFunc               func(jwtTokenConfig *JwtTokenConfig, name string) (string, error)
@@ -17,6 +18,7 @@ type BootConfig struct {
 	PhoneConfig                         *PhoneConfig
 	JwtTokenConfig                      *JwtTokenConfig
 	PasswordConfig                      *PasswordConfig
+	GitHubOAuth2Config                  *GitHubOAuth2Config
 }
 
 type EmailConfig struct {
@@ -46,4 +48,10 @@ type PasswordConfig struct {
 	RequireSpecialCharacter bool
 	RequireUppercaseLetters bool
 	RequireLowercaseLetters bool
+}
+type GitHubOAuth2Config struct {
+	ClientId           string
+	ClientSecret       string
+	DefaultRedirectURI string
+	AllowedOAuthScopes string
 }
