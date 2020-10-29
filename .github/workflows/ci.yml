@@ -24,9 +24,6 @@ jobs:
       with:
         go-version: ^1.15
 
-    - name: Path
-      run: export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
@@ -35,9 +32,6 @@ jobs:
       
     - name: Generate again
       run: ./generate.sh
-      
-    - name: Source
-      run: source dev_env
       
     - name: Test
       run: go test -v ./gql/...
