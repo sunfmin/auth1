@@ -29,6 +29,13 @@ type Resolver struct {
 	Config    *api.BootConfig
 }
 
+var (
+	clientId           string
+	clientSecret       string
+	defaultRedirectURI string
+	allowedOAuthScopes string
+)
+
 const (
 	EmailAttributeName       = "email"
 	PhoneNumberAttributeName = "phone_number"
@@ -64,6 +71,15 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	if config.PasswordConfig == nil {
 		panic("PasswordConfig is nil")
 	}
+	if config.AllowSignInWithGitHubOAuth2 == true {
+		if config.GitHubOAuth2Config == nil {
+			panic("GitHubOAuth2Config is nil")
+		}
+		clientId = config.GitHubOAuth2Config.ClientId
+		clientSecret = config.GitHubOAuth2Config.ClientSecret
+		defaultRedirectURI = config.GitHubOAuth2Config.DefaultRedirectURI
+		allowedOAuthScopes = config.GitHubOAuth2Config.AllowedOAuthScopes
+	}
 	if config.AllowSignInWithVerifiedEmailAddress && config.AllowSignInWithVerifiedPhoneNumber {
 		panic("verify email address and verify phone number can not be true the same time")
 	}
@@ -74,25 +90,49 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	return
 }
 
-var redirectUri string
-
-func Authorize(w http.ResponseWriter, r *http.Request) {
-	redirectUri = r.URL.Query().Get("redirect_uri")
-	if r.URL.Query().Get("response_type") == "code" {
-		if r.URL.Query().Get("identity_provider") == "GitHub" {
-			var url = fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:8080/oauth2/idpresponse&scope=%s", r.URL.Query().Get("client_id"), r.URL.Query().Get("scope"))
-			http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+func Idpresponse(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/oauth2/authorize" {
+		if r.URL.Query().Get("response_type") == "code" {
+			if r.URL.Query().Get("identity_provider") == "GitHub" {
+				fmt.Print(clientId)
+				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, r.URL.Query().Get("redirect_uri"))
+				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+			}
 		}
 	}
-
-}
-func Idpresponse(w http.ResponseWriter, r *http.Request) {
-	var code = r.URL.Query().Get("code")
-	r.Header.Set("code", code)
-	http.Redirect(w, r, redirectUri+"?code="+code, http.StatusTemporaryRedirect)
+	if r.URL.Path == "/oauth2/idpresponse" {
+		redirectUri := r.URL.Query().Get("state")
+		code := r.URL.Query().Get("code")
+		r.Header.Set("code", code)
+		http.Redirect(w, r, redirectUri+"?code="+code, http.StatusTemporaryRedirect)
+	}
+	if r.URL.Path == "/oauth2/token" {
+		if r.FormValue("grant_type") == "authorization_code" {
+			accesstoken, err := getToken(r.FormValue("code"))
+			if err != nil {
+				err, _ := json.Marshal(map[string]interface{}{"error": err})
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(err)
+			}
+			token, _ := json.Marshal(accesstoken)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(token)
+		}
+	}
+	if r.URL.Path == "/oauth2/userInfo" {
+		userInfo, err := getUserInfo(r.URL.Query().Get("access_token"))
+		if err != nil {
+			err, _ := json.Marshal(map[string]interface{}{"error": err})
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(err)
+		}
+		token, _ := json.Marshal(userInfo)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(token)
+	}
 }
 func getToken(code string) (map[string]interface{}, error) {
-	var tokenAuthUrl = fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", "294f07e8521dce0b96f7", "74370eb312c2074ce01f2ecb2a9e15b6c80f3db5", code)
+	tokenAuthUrl := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientId, clientSecret, code)
 	var req *http.Request
 	var err error
 	if req, err = http.NewRequest(http.MethodPost, tokenAuthUrl, nil); err != nil {
@@ -111,7 +151,7 @@ func getToken(code string) (map[string]interface{}, error) {
 	return token, nil
 }
 
-func getUserInfo(token map[string]interface{}) (map[string]interface{}, error) {
+func getUserInfo(token string) (map[string]interface{}, error) {
 
 	var userInfoUrl = "https://api.github.com/user"
 	var req *http.Request
@@ -120,7 +160,7 @@ func getUserInfo(token map[string]interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("token %s", token["access_token"]))
+	req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 
 	var client = http.Client{}
 	var res *http.Response
