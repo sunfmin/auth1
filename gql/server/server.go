@@ -41,7 +41,7 @@ func main() {
 			gql.Config{
 				Resolvers: gql.NewResolver(
 					boot.MustGetEntClient(),
-					&api.BootConfig{AllowSignInWithGitHubOAuth2: true, GitHubOAuth2Config: &api.GitHubOAuth2Config{ClientId: "294f07e8521dce0b96f7", ClientSecret: "74370eb312c2074ce01f2ecb2a9e15b6c80f3db5", AllowedOAuthScopes: "user:email"}, PasswordConfig: &api.PasswordConfig{MinimumLength: 8, RequireNumber: true, RequireSpecialCharacter: true, RequireUppercaseLetters: true, RequireLowercaseLetters: true}, AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false, UsernameCaseSensitive: false, EmailConfig: &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"}, PhoneConfig: &api.PhoneConfig{AccessKeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"}},
+					&api.BootConfig{AllowSignInWithGitHubOAuth2: true, GitHubOAuth2Config: &api.GitHubOAuth2Config{ClientId: "", ClientSecret: "", AllowedOAuthScopes: "user:email"}, PasswordConfig: &api.PasswordConfig{MinimumLength: 8, RequireNumber: true, RequireSpecialCharacter: true, RequireUppercaseLetters: true, RequireLowercaseLetters: true}, AllowSignInWithVerifiedEmailAddress: true, AllowSignInWithVerifiedPhoneNumber: false, AllowSignInWithPreferredUsername: false, UsernameCaseSensitive: false, EmailConfig: &api.EmailConfig{User: "", Pass: "", Host: "smtp.qq.com", Port: "465"}, PhoneConfig: &api.PhoneConfig{AccessKeyId: "<accesskeyId>", AccessSecret: "<accessSecret>", SignName: "签名", TemplateCode: "模板编码"}},
 				),
 			},
 		)))
@@ -49,6 +49,7 @@ func main() {
 	http.HandleFunc("/oauth2/authorize", gql.Idpresponse)
 	http.HandleFunc("/oauth2/token", gql.Idpresponse)
 	http.HandleFunc("/oauth2/userInfo", gql.Idpresponse)
+	http.HandleFunc("/oauth2/login", gql.Idpresponse)
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

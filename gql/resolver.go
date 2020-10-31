@@ -94,41 +94,83 @@ func Idpresponse(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/oauth2/authorize" {
 		if r.URL.Query().Get("response_type") == "code" {
 			if r.URL.Query().Get("identity_provider") == "GitHub" {
-				fmt.Print(clientId)
-				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, r.URL.Query().Get("redirect_uri"))
+				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "code,"+r.URL.Query().Get("redirect_uri"))
 				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 			}
+			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
 		}
+		if r.URL.Query().Get("response_type") == "token" {
+			if r.URL.Query().Get("identity_provider") == "GitHub" {
+				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "token,"+r.URL.Query().Get("redirect_uri"))
+				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+			}
+			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
+		}
+		http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
 	}
 	if r.URL.Path == "/oauth2/idpresponse" {
-		redirectUri := r.URL.Query().Get("state")
-		code := r.URL.Query().Get("code")
-		r.Header.Set("code", code)
-		http.Redirect(w, r, redirectUri+"?code="+code, http.StatusTemporaryRedirect)
-	}
-	if r.URL.Path == "/oauth2/token" {
-		if r.FormValue("grant_type") == "authorization_code" {
-			accesstoken, err := getToken(r.FormValue("code"))
+		state := strings.Split(r.URL.Query().Get("state"), ",")
+		if state[0] == "code" {
+			code := r.URL.Query().Get("code")
+			http.Redirect(w, r, state[1]+"?code="+code, http.StatusTemporaryRedirect)
+		}
+		if state[0] == "token" {
+			token, err := getToken(r.URL.Query().Get("code"))
 			if err != nil {
 				err, _ := json.Marshal(map[string]interface{}{"error": err})
 				w.Header().Set("Content-Type", "application/json")
 				w.Write(err)
 			}
-			token, _ := json.Marshal(accesstoken)
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(token)
+			http.Redirect(w, r, state[1]+"?token="+token["access_token"].(string), http.StatusTemporaryRedirect)
+		}
+		if state[0] == "login" {
+			token, err := getToken(r.URL.Query().Get("code"))
+			if err != nil {
+				err, _ := json.Marshal(map[string]interface{}{"error": err})
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(err)
+			}
+			userInfo, err := getUserInfo(token["access_token"].(string))
+			if err != nil {
+				err, _ := json.Marshal(map[string]interface{}{"error": err})
+				w.Header().Set("Content-Type", "application/json")
+				w.Write(err)
+			}
+			fmt.Print(userInfo)
+			http.Redirect(w, r, state[1], http.StatusTemporaryRedirect)
 		}
 	}
-	if r.URL.Path == "/oauth2/userInfo" {
-		userInfo, err := getUserInfo(r.URL.Query().Get("access_token"))
+	if r.URL.Path == "/oauth2/token" {
+		code, err := getToken(r.FormValue("code"))
 		if err != nil {
 			err, _ := json.Marshal(map[string]interface{}{"error": err})
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(err)
 		}
-		token, _ := json.Marshal(userInfo)
+		token, _ := json.Marshal(code)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(token)
+	}
+	if r.URL.Path == "/oauth2/userInfo" {
+		token, err := getUserInfo(r.URL.Query().Get("access_token"))
+		if err != nil {
+			err, _ := json.Marshal(map[string]interface{}{"error": err})
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(err)
+		}
+		userInfo, _ := json.Marshal(token)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(userInfo)
+	}
+	if r.URL.Path == "/oauth2/login" {
+		if r.URL.Query().Get("response_type") == "code" {
+			if r.URL.Query().Get("identity_provider") == "GitHub" {
+				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "login,"+r.URL.Query().Get("redirect_uri"))
+				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+			}
+			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
+		}
+		http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
 	}
 }
 func getToken(code string) (map[string]interface{}, error) {
