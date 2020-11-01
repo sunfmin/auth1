@@ -729,6 +729,41 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 	return
 }
 
+func (r *mutationResolver) CreateIdentityProvider(ctx context.Context, input api.CreateIdentityProviderInput) (output *api.IdentityProvider, err error) {
+	var (
+		providerDetails  map[string]string
+		attributeMapping string
+	)
+	id := uuid.New()
+	err = json.Unmarshal([]byte(input.ProviderDetails), &providerDetails)
+	if err != nil {
+		return
+	}
+	fmt.Print("P", input.ProviderDetails)
+	if input.AttributeMapping == nil {
+		attributeMapping = ""
+	} else {
+		attributeMapping = *input.AttributeMapping
+	}
+	_, err = r.EntClient.IdentityProviders.Create().
+		SetID(id).
+		SetAttributeMapping(attributeMapping).
+		SetProviderName(input.ProviderName).
+		SetProviderType(input.ProviderType).
+		SetClientID(providerDetails["client_id"]).
+		SetClientSecret(providerDetails["client_secret"]).
+		SetAuthorizeScopes(providerDetails["authorize_scopes"]).
+		SetProviderDetails(input.ProviderDetails).
+		SetCreationDate(nowTime()).
+		SetLastModifiedDate(nowTime()).
+		Save(ctx)
+	if err != nil {
+		return
+	}
+	output = &api.IdentityProvider{AttributeMapping: input.AttributeMapping, CreationDate: nowTime(), LastModifiedDate: nowTime(), ProviderDetalis: input.ProviderDetails, ProviderName: input.ProviderName, ProviderType: input.ProviderType}
+	return
+}
+
 // Mutation returns MutationResolver implementation.
 func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 
