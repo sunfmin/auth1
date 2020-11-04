@@ -17,7 +17,7 @@ var (
 	ErrCaptchaTimeout           = fmt.Errorf("captcha timeout")
 	ErrPasswordHash             = fmt.Errorf("passwordhash creation failed")
 	ErrCodeHash                 = fmt.Errorf("code hash creation failed")
-	ErrUserExists               = fmt.Errorf("user already exists")
+	ErrUserExists               = fmt.Errorf("email already exists")
 	ErrPasswordNumber           = fmt.Errorf("the password need to contain number")
 	ErrPasswordEmpty            = fmt.Errorf("the password is empty")
 	ErrPasswordTooShort         = fmt.Errorf("the password is too short")

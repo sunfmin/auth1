@@ -14,6 +14,7 @@ type Mutation {
     ConfirmSignUp(input: ConfirmSignUpInput!):ConfirmOutput
     InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
     GlobalSignOut(input: GlobalSignOutInput!):ConfirmOutput
+    CreateIdentityProvider(input: CreateIdentityProviderInput!):IdentityProvider
 }
 
 input SignUpInput {
@@ -81,6 +82,22 @@ type CodeDeliveryDetails{
 
 type ConfirmOutput{
     ConfirmStatus: Boolean!
+}
+
+input CreateIdentityProviderInput{
+    AttributeMapping: String
+    ProviderDetails: String!
+    ProviderName: String!
+    ProviderType: String!
+}
+
+type IdentityProvider{
+    AttributeMapping: String
+    CreationDate:String!
+    LastModifiedDate: String!
+    ProviderDetalis:String!
+    ProviderName: String!
+    ProviderType: String!
 }
 
 scalar Time

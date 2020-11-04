@@ -1574,8 +1574,7 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow:       "REFRESH_TOKEN_AUTH",
-					AuthParameters: map[string]interface{}{
-					},
+					AuthParameters: map[string]interface{}{},
 				},
 			},
 		},
@@ -1609,7 +1608,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.InitiateAuthInput{
-					AuthFlow:       "REFRESH_TOKEN_AUTH",
+					AuthFlow: "REFRESH_TOKEN_AUTH",
 					AuthParameters: map[string]interface{}{
 						"RefreshToken": "failed",
 					},
