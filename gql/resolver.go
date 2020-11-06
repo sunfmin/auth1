@@ -18,6 +18,7 @@ import (
 	masker "github.com/ggwhite/go-masker"
 	"github.com/google/uuid"
 	"github.com/sunfmin/auth1/ent"
+	"github.com/sunfmin/auth1/ent/socialaccount"
 	"github.com/sunfmin/auth1/ent/user"
 	"github.com/sunfmin/auth1/gql/api"
 	"golang.org/x/crypto/bcrypt"
@@ -90,88 +91,21 @@ func NewResolver(entClient *ent.Client, config *api.BootConfig) (r *Resolver) {
 	return
 }
 
+func Authorize(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("response_type") == "code" {
+		if r.URL.Query().Get("identity_provider") == "GitHub" {
+			url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, r.URL.Query().Get("redirect_uri"))
+			http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+		}
+		http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
+	}
+	http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
+}
+
 func Idpresponse(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/oauth2/authorize" {
-		if r.URL.Query().Get("response_type") == "code" {
-			if r.URL.Query().Get("identity_provider") == "GitHub" {
-				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "code,"+r.URL.Query().Get("redirect_uri"))
-				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-			}
-			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
-		}
-		if r.URL.Query().Get("response_type") == "token" {
-			if r.URL.Query().Get("identity_provider") == "GitHub" {
-				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "token,"+r.URL.Query().Get("redirect_uri"))
-				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-			}
-			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
-		}
-		http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
-	}
-	if r.URL.Path == "/oauth2/idpresponse" {
-		state := strings.Split(r.URL.Query().Get("state"), ",")
-		if state[0] == "code" {
-			code := r.URL.Query().Get("code")
-			http.Redirect(w, r, state[1]+"?code="+code, http.StatusTemporaryRedirect)
-		}
-		if state[0] == "token" {
-			token, err := getToken(r.URL.Query().Get("code"))
-			if err != nil {
-				err, _ := json.Marshal(map[string]interface{}{"error": err})
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(err)
-			}
-			http.Redirect(w, r, state[1]+"?token="+token["access_token"].(string), http.StatusTemporaryRedirect)
-		}
-		if state[0] == "login" {
-			token, err := getToken(r.URL.Query().Get("code"))
-			if err != nil {
-				err, _ := json.Marshal(map[string]interface{}{"error": err})
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(err)
-			}
-			userInfo, err := getUserInfo(token["access_token"].(string))
-			if err != nil {
-				err, _ := json.Marshal(map[string]interface{}{"error": err})
-				w.Header().Set("Content-Type", "application/json")
-				w.Write(err)
-			}
-			fmt.Print(userInfo)
-			http.Redirect(w, r, state[1], http.StatusTemporaryRedirect)
-		}
-	}
-	if r.URL.Path == "/oauth2/token" {
-		code, err := getToken(r.FormValue("code"))
-		if err != nil {
-			err, _ := json.Marshal(map[string]interface{}{"error": err})
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(err)
-		}
-		token, _ := json.Marshal(code)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(token)
-	}
-	if r.URL.Path == "/oauth2/userInfo" {
-		token, err := getUserInfo(r.URL.Query().Get("access_token"))
-		if err != nil {
-			err, _ := json.Marshal(map[string]interface{}{"error": err})
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(err)
-		}
-		userInfo, _ := json.Marshal(token)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(userInfo)
-	}
-	if r.URL.Path == "/oauth2/login" {
-		if r.URL.Query().Get("response_type") == "code" {
-			if r.URL.Query().Get("identity_provider") == "GitHub" {
-				url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=%s&scope=%s&state=%s", clientId, defaultRedirectURI, allowedOAuthScopes, "login,"+r.URL.Query().Get("redirect_uri"))
-				http.Redirect(w, r, url, http.StatusTemporaryRedirect)
-			}
-			http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
-		}
-		http.Redirect(w, r, r.URL.Query().Get("redirect_uri")+"?error=invalid_reques", http.StatusTemporaryRedirect)
-	}
+	code := r.FormValue("code")
+	redirectUri := r.URL.Query().Get("state")
+	http.Redirect(w, r, redirectUri+"?"+code, http.StatusTemporaryRedirect)
 }
 func getToken(code string) (map[string]interface{}, error) {
 	tokenAuthUrl := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientId, clientSecret, code)
@@ -186,8 +120,16 @@ func getToken(code string) (map[string]interface{}, error) {
 	if res, err = httpClient.Do(req); err != nil {
 		return nil, err
 	}
+	if res.StatusCode != 200 {
+		err = fmt.Errorf("get failed")
+		return nil, err
+	}
 	var token = make(map[string]interface{})
 	if err = json.NewDecoder(res.Body).Decode(&token); err != nil {
+		return nil, err
+	}
+	if token["error"] != nil {
+		err = fmt.Errorf(token["error"].(string))
 		return nil, err
 	}
 	return token, nil
@@ -209,9 +151,16 @@ func getUserInfo(token string) (map[string]interface{}, error) {
 	if res, err = client.Do(req); err != nil {
 		return nil, err
 	}
-
+	if res.StatusCode != 200 {
+		err = fmt.Errorf("get failed")
+		return nil, err
+	}
 	var userInfo = make(map[string]interface{})
 	if err = json.NewDecoder(res.Body).Decode(&userInfo); err != nil {
+		return nil, err
+	}
+	if userInfo["error"] != nil {
+		err = fmt.Errorf(userInfo["error"].(string))
 		return nil, err
 	}
 	return userInfo, nil
@@ -804,6 +753,41 @@ func (r *mutationResolver) GlobalSignOut(ctx context.Context, input api.GlobalSi
 		return
 	}
 	_, err = r.EntClient.User.Update().Where(user.Username(UserNameCaseSensitive(r, result["Username"].(string)))).SetTokenState(0).Save(ctx)
+	if err != nil {
+		return
+	}
+	output = &api.ConfirmOutput{ConfirmStatus: true}
+	return
+}
+
+func (r *mutationResolver) OAuth(ctx context.Context, input api.OAuthInput) (output *api.ConfirmOutput, err error) {
+	if input.IdpIdentifier != ("GitHub") {
+		err = api.ErrUnknownIdpIdentifier
+		return
+	}
+	token, err := getToken(input.Code)
+	if err != nil {
+		return
+	}
+	userInfo, err := getUserInfo(token["access_token"].(string))
+	if err != nil {
+		return
+	}
+	_, err = r.EntClient.SocialAccount.Query().Where(socialaccount.Username("GitHub_" + userInfo["login"].(string))).Only(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return
+	}
+	if err == nil {
+		err = api.ErrUserExists
+		return
+	}
+	id := uuid.New()
+	_, err = r.EntClient.SocialAccount.Create().
+		SetID(id).
+		SetUsername("GitHub_" + userInfo["login"].(string)).
+		SetIdpIdentifier("GitHub").
+		SetIdentities(userInfo).
+		Save(ctx)
 	if err != nil {
 		return
 	}
