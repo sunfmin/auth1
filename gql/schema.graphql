@@ -14,7 +14,7 @@ type Mutation {
     ConfirmSignUp(input: ConfirmSignUpInput!):ConfirmOutput
     InitiateAuth(input: InitiateAuthInput!):AuthenticationResult
     GlobalSignOut(input: GlobalSignOutInput!):ConfirmOutput
-    OAuth(input: OAuthInput!):ConfirmOutput
+    InitiateOAuth(input: InitiateOAuthInput!):AuthenticationResult
 }
 
 input SignUpInput {
@@ -62,7 +62,7 @@ input AuthParameters{
     Password: String
     RefreshToken: String
 }
-input OAuthInput{
+input InitiateOAuthInput{
     Code: String!
     IdpIdentifier: String!
 }

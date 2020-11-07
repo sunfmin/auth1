@@ -23,6 +23,7 @@ func (SocialAccount) Fields() []ent.Field {
 		field.String("phone_number").Optional(),
 		field.String("idp_identifier").Optional(),
 		field.JSON("identities", identities{}.identities).Optional(),
+		field.Int("token_state").Optional(),
 	}
 }
 

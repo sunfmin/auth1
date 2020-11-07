@@ -29,18 +29,20 @@ func sendMsgTest(PhoneConfig *api.PhoneConfig, tel string, code string) (err err
 	return nil
 }
 
-func createAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
+func createAccessToken(JwtTokenConfig *api.JwtTokenConfig, name string, idp string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
+		"Idp":      idp,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.JwtExpireSecond)).Unix(),
 	})
 
 	return token.SignedString([]byte(JwtTokenConfig.JwtSecretKey))
 }
-func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, name string) (string, error) {
+func createRefreshToken(JwtTokenConfig *api.JwtTokenConfig, name string, idp string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"Username": name,
+		"Idp":      idp,
 		"exp":      time.Now().Add(time.Second * time.Duration(JwtTokenConfig.RefreshTokenJwtExpireSecond)).Unix(),
 	})
 
@@ -53,10 +55,10 @@ func NowTime() string {
 	return formatTimeStr
 }
 
-var testAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
-var failedAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
-var testRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test")
-var failedRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test")
+var testAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test", "Cognito")
+var failedAccessToken, _ = createAccessToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test", "Cognito")
+var testRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "welcomelogin", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "refreshtoken", RefreshTokenJwtExpireSecond: 2592000}, "test", "Cognito")
+var failedRefreshToken, _ = createRefreshToken(&api.JwtTokenConfig{JwtSecretKey: "failed", JwtExpireSecond: 3600, RefreshTokenJwtSecretKey: "fail", RefreshTokenJwtExpireSecond: 2592000}, "test", "Cognito")
 var codeHash, _ = bcrypt.GenerateFromPassword([]byte("111111"), bcrypt.DefaultCost)
 var passwordHash, _ = bcrypt.GenerateFromPassword([]byte("password"), bcrypt.DefaultCost)
 
@@ -1574,8 +1576,7 @@ var userMutationCases = []GraphqlCase{
 				name: "input",
 				val: api.InitiateAuthInput{
 					AuthFlow:       "REFRESH_TOKEN_AUTH",
-					AuthParameters: map[string]interface{}{
-					},
+					AuthParameters: map[string]interface{}{},
 				},
 			},
 		},
@@ -1609,7 +1610,7 @@ var userMutationCases = []GraphqlCase{
 			{
 				name: "input",
 				val: api.InitiateAuthInput{
-					AuthFlow:       "REFRESH_TOKEN_AUTH",
+					AuthFlow: "REFRESH_TOKEN_AUTH",
 					AuthParameters: map[string]interface{}{
 						"RefreshToken": "failed",
 					},
