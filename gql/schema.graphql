@@ -2,7 +2,7 @@ directive @goField(forceResolver: Boolean, name: String) on INPUT_FIELD_DEFINITI
     | FIELD_DEFINITION
 
 type Query {
-    getUser(accessToken: String!): [User!]
+    getUser(accessToken: String!): GetUserResult
 }
 
 type Mutation {
@@ -83,9 +83,16 @@ type CodeDeliveryDetails{
     DeliveryMedium: String!
     Destination: String!
 }
-
 type ConfirmOutput{
     ConfirmStatus: Boolean!
+}
+type GetUserResult{
+    Username: String!
+    UserAttributes: [UserAttributes]
+}
+type UserAttributes{
+    Name: String!
+    Value: String!
 }
 
 scalar Time

@@ -29,11 +29,11 @@ func sendMsgTest(tel string, code string) (err error) {
 	fmt.Print(vcode)
 	return nil
 }
-func oauthHandle() {
+func oauthHandle(){
 	http.HandleFunc("/oauth2/idpresponse", gql.Idpresponse)
 	http.HandleFunc("/oauth2/authorize", gql.Authorize)
 }
-func gqlHandle() {
+func gqlHandle(){
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", handler.NewDefaultServer(
 		gql.NewExecutableSchema(
@@ -51,7 +51,7 @@ func main() {
 		port = defaultPort
 	}
 	gqlHandle()
-	oauthHandle()
+    oauthHandle()
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
