@@ -27,4 +27,5 @@ var (
 	ErrUsernameIsNil            = fmt.Errorf("username is nil")
 	ErrPasswordIsNil            = fmt.Errorf("password is nil")
 	ErrRefreshTokenIsNil        = fmt.Errorf("refreshtoken is nil")
+	ErrUnknownIdpIdentifier     = fmt.Errorf("unknown IdpIdentifie")
 )

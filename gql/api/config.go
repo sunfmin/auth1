@@ -11,7 +11,7 @@ type BootConfig struct {
 	AllowSignInWithGitHubOAuth2         bool
 	UsernameCaseSensitive               bool
 	PreSignUpFunc                       func(ctx context.Context, input SignUpInput) error
-	CreateAccessTokenFunc               func(jwtTokenConfig *JwtTokenConfig, name string) (string, error)
+	CreateAccessTokenFunc               func(jwtTokenConfig *JwtTokenConfig, name string,idp string) (string, error)
 	SendMailFunc                        func(emailConfig *EmailConfig, email string, subject string, body string) (err error)
 	SendMsgFunc                         func(phoneConfig *PhoneConfig, tel string, code string) (err error)
 	EmailConfig                         *EmailConfig
